@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.Serialization.Json;
+using System.Text;
 
 namespace bms2csv
 {
@@ -131,8 +132,9 @@ namespace bms2csv
 
                 filename = root + ".csv";
                 exportPath = Path.Combine(path, filename);
+                Encoding encode = new UTF8Encoding(false);
 
-                using (StreamWriter output = new StreamWriter(exportPath))
+                using (StreamWriter output = new StreamWriter(exportPath, false, encode))
                 {
                     foreach (Note note in allNotes)
                     {
@@ -153,7 +155,7 @@ namespace bms2csv
 
                         var json = sr.ReadToEnd();
 
-                        using (StreamWriter output = new StreamWriter(exportPath))
+                        using (StreamWriter output = new StreamWriter(exportPath, false, encode))
                         {
                             output.WriteLine($"{json}");
                         }
