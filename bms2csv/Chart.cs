@@ -39,22 +39,11 @@ namespace bms2csv
         public int[] data;
     }
 
-    public class ScoreWeight
-    {
-        public float each;
-        public float long_note;
-        public float normal;
-        public float slide;
-        public float special;
-    }
-
     public class Chart
     {
         public int start;
         public List<BpmChange> bpm; // 曲中のBPM変化リスト
-        public string hash;
         public Header header;
         public List<MainData> main;
-        public ScoreWeight notes_weight;
     }
 }
