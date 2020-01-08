@@ -129,6 +129,10 @@ namespace bms2csv
                 {
                     path = outputPath;
                 }
+                if (!Directory.Exists(path))
+                {
+                    Directory.CreateDirectory(path);
+                }
 
                 filename = root + ".csv";
                 exportPath = Path.Combine(path, filename);
