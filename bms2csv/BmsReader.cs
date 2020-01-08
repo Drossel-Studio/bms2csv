@@ -137,6 +137,11 @@ namespace bms2csv
             while (head != -1)
             {
                 head = bms.IndexOf("#", head + 1);
+                if (head == -1)
+                {
+                    Console.WriteLine("Warning: 曲の開始点がありません、1小節目の始まりを曲の開始点とします");
+                    break;
+                }
                 if (int.Parse(bms.Substring(head + 4, 2)) != 1)
                 {
                     continue;
