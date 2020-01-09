@@ -2,14 +2,13 @@
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
-using System.Security.Cryptography;
 using System.Text;
 
 namespace bms2csv
 {
     class BmsReader
     {
-        private static List<Tuple<int, int>> Lanes = new List<Tuple<int, int>>
+        readonly private static List<Tuple<int, int>> Lanes = new List<Tuple<int, int>>
         {
             new Tuple<int, int>(11, 5),
             new Tuple<int, int>(12, 1),
@@ -20,18 +19,43 @@ namespace bms2csv
             new Tuple<int, int>(19, 7)
         };
 
-        static string GetWav(string bms, string key, int head)
+        private static List<Tuple<int, double>> Read_Header_Bpm(string bms, string key, out double initialBpm)
         {
-            string wav = "";
+            List<Tuple<int, double>> bpmHeader = new List<Tuple<int, double>>();
+            initialBpm = 0;
 
-            if (head != -1)
+            int head = 0;
+            while (head != -1)
             {
-                int start = head + key.Length + 1;
-                int end = bms.IndexOf("\n", head);
-                wav = bms.Substring(start, end - start - 1);
+                string search_key = String.Format("#{0}", key);
+                int lastHead = head;
+                head = bms.IndexOf(search_key, head + 1);
+                if (head == -1)
+                {
+                    head = bms.IndexOf(search_key.ToUpper(), lastHead + 1);
+                }
+                if (head == -1)
+                {
+                    break;
+                }
+
+                if (bms.Substring(head + key.Length + 1, 1) != " ")
+                {
+                    int index = int.Parse(bms.Substring(head + key.Length + 1, 2));
+                    int start = head + key.Length + 3;
+                    int end = bms.IndexOf("\n", head);
+                    double bpm = double.Parse(bms.Substring(start, end - start - 1));
+                    bpmHeader.Add(new Tuple<int, double>(index, bpm));
+                }
+                else
+                {
+                    int start = head + key.Length + 1;
+                    int end = bms.IndexOf("\n", head);
+                    initialBpm = double.Parse(bms.Substring(start, end - start - 1));
+                }
             }
 
-            return wav;
+            return bpmHeader;
         }
 
         static string Read_Header(string bms, string key)
@@ -44,10 +68,6 @@ namespace bms2csv
             if (head == -1)
             {
                 return "NONE";
-            }
-            if (key == "WAV01")
-            {
-                return GetWav(bms, key, head);
             }
             int start = head + key.Length + 1;
             int end = bms.IndexOf("\n", head);
@@ -127,7 +147,7 @@ namespace bms2csv
             return main_data;
         }
 
-        static int Read_Start(string bms, int initialBpm)
+        static int Read_Start(string bms, double initialBpm)
         {
             if (initialBpm == 0)
             {
@@ -178,7 +198,16 @@ namespace bms2csv
                     int slice_start = index + 1;
                     int slice_end = bms.IndexOf("\n", index);
                     List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
-                    bpmChange.Add(new BpmChange { line = line, data = data.ToArray() });
+                    bpmChange.Add(new BpmChange { line = line, data = data.ToArray(), index = false });
+                }
+                if ((int.Parse(bms.Substring(head + 4, 2))) == 8)
+                {
+                    int line = int.Parse(bms.Substring(head + 1, 3));
+                    int index = bms.IndexOf(":", head);
+                    int slice_start = index + 1;
+                    int slice_end = bms.IndexOf("\n", index);
+                    List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
+                    bpmChange.Add(new BpmChange { line = line, data = data.ToArray(), index = true });
                 }
             }
             return bpmChange;
@@ -203,10 +232,11 @@ namespace bms2csv
                 title = Read_Header(bms, "title"),
                 artist = Read_Header(bms, "artist"),
                 wav = Read_Header(bms, "wav01"),
-                bpm = Read_Header_Int(bms, "bpm"),
+                bpm = 0,
                 playlevel = Read_Header_Int(bms, "playlevel"),
                 rank = Read_Header_Int(bms, "rank")
             };
+            chart.bpmHeader = Read_Header_Bpm(bms, "bpm", out chart.header.bpm);
 
             chart.main = Read_Main(bms);
             chart.start = Read_Start(bms, chart.header.bpm);

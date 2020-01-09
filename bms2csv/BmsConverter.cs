@@ -25,8 +25,8 @@ namespace bms2csv
                 GetMainData(lineData, ref bmsCountMainData);
             }
 
-            List<Tuple<int, int, long>> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
-            foreach (Tuple<int, int, long> c in checkPoint)
+            List<Tuple<double, double, long>> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm, chartData);
+            foreach (Tuple<double, double, long> c in checkPoint)
             {
                 Console.WriteLine(c);
             }
@@ -55,11 +55,11 @@ namespace bms2csv
         }
 
         // BMSカウントと実時間(ms)の対応表を作る
-        private static List<Tuple<int, int, long>> CalcBpmChangeTiming(int initialBpm, List<BpmChange> bpmChangeArray)
+        private static List<Tuple<double, double, long>> CalcBpmChangeTiming(double initialBpm, List<BpmChange> bpmChangeArray, Chart chartData)
         {
             bpmChangeArray.Sort((a, b) => a.line - b.line);
-            List<Tuple<int, int, long>> changeTimingList = new List<Tuple<int, int, long>> { Tuple.Create(0, initialBpm, 0L) };
-            int currentBpm = initialBpm;
+            List<Tuple<double, double, long>> changeTimingList = new List<Tuple<double, double, long>> { Tuple.Create(0.0, initialBpm, 0L) };
+            double currentBpm = initialBpm;
             foreach (var change in bpmChangeArray)
             {
                 int lineHeadBmsCount = change.line * 9600;
@@ -70,17 +70,20 @@ namespace bms2csv
                     {
                         continue;
                     }
-                    Tuple<int, int, long> beforePoint = changeTimingList[changeTimingList.Count - 1];
-                    int bmscnt = lineHeadBmsCount + 9600 * i / cnt;
-                    long realTimeCount = (long)((bmscnt - beforePoint.Item1) / 9600f * 60 / currentBpm * 4 * 1000 + beforePoint.Item3);
-                    changeTimingList.Add(Tuple.Create(bmscnt, change.data[i], realTimeCount));
-                    currentBpm = change.data[i];
+
+                    double bpm = change.index ? chartData.bpmHeader.Find(n => n.Item1 == change.data[i]).Item2 : change.data[i];
+
+                    Tuple<double, double, long> beforePoint = changeTimingList[changeTimingList.Count - 1];
+                    double bmscnt = lineHeadBmsCount + 9600.0 * i / cnt;
+                    long realTimeCount = (long)((bmscnt - beforePoint.Item1) / 9600.0 * 60 / currentBpm * 4 * 1000 + beforePoint.Item3);
+                    changeTimingList.Add(Tuple.Create(bmscnt, bpm, realTimeCount));
+                    currentBpm = bpm;
                 }
             }
             return changeTimingList;
         }
 
-        private static List<Note> ConvertBmsCountToRealCount(List<Note> bmsCountMainData, List<Tuple<int, int, long>> checkpoint, int start)
+        private static List<Note> ConvertBmsCountToRealCount(List<Note> bmsCountMainData, List<Tuple<double, double, long>> checkpoint, int start)
         {
             for (var j = 0; j < bmsCountMainData.Count; j++)
             {
@@ -89,10 +92,10 @@ namespace bms2csv
             return bmsCountMainData;
         }
 
-        private static Note GetRealCountMainData(Note srcData, IList<Tuple<int, int, long>> checkpoint, int start)
+        private static Note GetRealCountMainData(Note srcData, IList<Tuple<double, double, long>> checkpoint, int start)
         {
             long bmsCount = srcData.Time;
-            Tuple<int, int, long> nearestCheckPoint = checkpoint[0];
+            Tuple<double, double, long> nearestCheckPoint = checkpoint[0];
             foreach (var t in checkpoint)
             {
                 if (t.Item1 < bmsCount)
@@ -104,7 +107,7 @@ namespace bms2csv
                     break;
                 }
             }
-            long realTimeCount = (long)((bmsCount - nearestCheckPoint.Item1) / 9600f * 60 / nearestCheckPoint.Item2 * 4 * 1000 + nearestCheckPoint.Item3 - (start / 1000f));
+            long realTimeCount = (long)((bmsCount - nearestCheckPoint.Item1) / 9600.0 * 60 / nearestCheckPoint.Item2 * 4 * 1000 + nearestCheckPoint.Item3 - start);
             return new Note { Time = realTimeCount, Lane = srcData.Lane, Type = srcData.Type };
         }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace bms2csv
 {
@@ -17,7 +18,7 @@ namespace bms2csv
         public string wav;
 
         // 初期BPM
-        public int bpm;
+        public double bpm;
 
         // レベル
         public int playlevel;
@@ -37,6 +38,7 @@ namespace bms2csv
     {
         public int line;
         public int[] data;
+        public bool index;
     }
 
     public class Chart
@@ -44,6 +46,7 @@ namespace bms2csv
         public int start;
         public List<BpmChange> bpm; // 曲中のBPM変化リスト
         public Header header;
+        public List<Tuple<int, double>> bpmHeader;
         public List<MainData> main;
     }
 }
