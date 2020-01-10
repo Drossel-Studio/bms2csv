@@ -12,15 +12,20 @@ namespace bms2csv
             int totalCount = 0;
             int successCount = 0;
             int failureCount = 0;
+            if (args.Length > 0)
+            {
+                PATH = args[0];
+            }
             if (args.Length > 1)
             {
-                PATH = args[1];
-            }
-            if (args.Length > 2)
-            {
-                OUTPUT = args[2];
+                OUTPUT = args[1];
             }
 
+            if (!Directory.Exists(PATH))
+            {
+                Console.WriteLine("Error: パスが見つかりません");
+                return;
+            }
             string[] files = Directory.GetFiles(PATH, "*", SearchOption.TopDirectoryOnly);
             foreach (string f in files)
             {
