@@ -173,7 +173,7 @@ namespace bms2csv
             }
             catch (Exception e)
             {
-                Console.WriteLine(e.ToString());
+                Console.WriteLine(e.Message);
                 return false;
             }
         }
