@@ -22,6 +22,313 @@ namespace bms2csv
             public int Type;
         }
 
+        private enum NoteErrorFlag
+        {
+            None = 0,
+            InvalidTime = 0b1,
+            InvalidType = 0b10,
+            NoLongPair = 0b100,
+            NoSlidePair = 0b1000,
+            NoSlideParent = 0b10000
+        }
+
+        private class NoteTypeRange
+        {
+            public int lane;
+            public int from;
+            public int to;
+        }
+
+        readonly private static List<NoteTypeRange> NoteTypeRanges = new List<NoteTypeRange>()
+        {
+            new NoteTypeRange {lane = 1, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 2, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 3, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 4, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 5, from = 0x10, to = 0x1F},
+            new NoteTypeRange {lane = 6, from = 0x10, to = 0x1F},
+            new NoteTypeRange {lane = 7, from = 0x20, to = 0x2F}
+        };
+
+        private class LaneName
+        {
+            public int lane;
+            public string name;
+        }
+
+        readonly private static List<LaneName> LaneNames = new List<LaneName>()
+            {
+            new LaneName{lane = 1, name = "1"},
+            new LaneName{lane = 2, name = "2"},
+            new LaneName{lane = 3, name = "3"},
+            new LaneName{lane = 4, name = "4"},
+            new LaneName{lane = 5, name = "L"},
+            new LaneName{lane = 6, name = "R"},
+            new LaneName{lane = 7, name = "SP"}
+            };
+
+        private enum NoteType
+        {
+            NormalNote = 0x02,
+            LongNote = 0x03,
+            SlideParentNote1 = 0x04,
+            SlideChildNote1 = 0x05,
+            SlideParentNote2 = 0x06,
+            SlideChildNote2 = 0x07,
+            FlickUpNote = 0x10,
+            FlickDownNote = 0x11,
+            SpecialNote = 0x20
+        }
+
+        private class ObjectPair
+        {
+            public int type;
+            public int ID;
+            public int startID;
+            public int endID;
+            public int nextID;
+        }
+
+        //ペアノーツリストの作成
+        private static List<ObjectPair> CreatePairList(List<Object> obj, ref NoteErrorFlag[] errorFlag)
+        {
+            int pairNum;            //登録したペアリストの数
+            int firstPair;          //スライド親ノーツのペアリストインデックス（スライドノーツ登録中に使用）
+            NoteType parentType;    //親のノーツ種類
+            NoteType childType;     //親のノーツ種類
+            bool reg;               //すでにペアリストに登録したか否か
+
+            //オブジェのソート
+            obj.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+
+            //ペアリストの初期化
+            List<ObjectPair> pair = new List<ObjectPair>();
+            pairNum = 0;
+
+            //ペアリストの作成
+            for (int i = 0; i < obj.Count; i++)
+            {
+                switch ((NoteType)obj[i].type)
+                {
+                    //ロングノーツ
+                    case NoteType.LongNote:
+                        //登録済みかを検索
+                        reg = false;
+                        foreach (ObjectPair p in pair)
+                        {
+                            if (p.endID == i)
+                            {
+                                reg = true;
+                                break;
+                            }
+                        }
+                        if (reg)
+                        {
+                            continue;
+                        }
+
+                        //ペアリストを作成
+                        pair.Add(new ObjectPair { type = obj[i].type, ID = i, startID = i, endID = -1, nextID = -1 });
+
+                        for (int j = i + 1; j < obj.Count; j++)
+                        {
+                            //ペアとなるロングノーツを検索
+
+                            //対象でなければ除外
+                            //レーンが異なる
+                            if (obj[i].lane != obj[j].lane)
+                            {
+                                continue;
+                            }
+                            //種類が異なる
+                            if ((NoteType)obj[j].type != NoteType.LongNote)
+                            {
+                                continue;
+                            }
+
+                            //ペアとして登録
+                            pair[pairNum].endID = j;
+                            pair[pairNum].nextID = j;
+                            break;
+                        }
+
+                        //ペアなしフラグを立てる
+                        if (pair[pairNum].endID == -1)
+                        {
+                            errorFlag[pair[pairNum].ID] |= NoteErrorFlag.NoLongPair;
+                        }
+
+                        //登録完了
+                        pairNum++;
+                        break;
+
+                    //スライドノーツ
+                    case NoteType.SlideParentNote1:
+                    case NoteType.SlideParentNote2:
+                        parentType = NoteType.SlideParentNote1;
+                        childType = NoteType.SlideChildNote1;
+                        if ((NoteType)obj[i].type == NoteType.SlideParentNote2)
+                        {
+                            parentType = NoteType.SlideParentNote2;
+                            childType = NoteType.SlideChildNote2;
+                        }
+
+                        //登録済みかを検索
+                        reg = false;
+                        foreach (ObjectPair p in pair)
+                        {
+                            if (p.endID == i)
+                            {
+                                reg = true;
+                                break;
+                            }
+                        }
+                        if (reg)
+                        {
+                            continue;
+                        }
+
+                        //ペアリストを作成
+                        firstPair = pairNum;
+                        pair.Add(new ObjectPair { type = obj[i].type, ID = i, startID = i, endID = -1, nextID = -1 });
+
+                        for (int j = i + 1; j < obj.Count; j++)
+                        {
+                            //ペアとなるノーツを検索
+
+                            //対象でなければ除外
+                            //種類が異なる
+                            if (((NoteType)obj[j].type != parentType) && ((NoteType)obj[j].type != childType))
+                            {
+                                continue;
+                            }
+
+                            //スライド子ノーツの場合
+                            if ((NoteType)obj[j].type == childType)
+                            {
+                                //ペアとして登録
+                                pair[pairNum].nextID = j;
+                                pairNum++;
+
+                                //子ノーツ用のペアリストを作成
+                                pair.Add(new ObjectPair { type = obj[j].type, ID = j, startID = pair[firstPair].startID, endID = -1, nextID = -1 });
+                            }
+
+                            //スライド親ノーツの場合
+                            if ((NoteType)obj[j].type == parentType)
+                            {
+                                //ペアとして登録
+                                pair[pairNum].nextID = j;
+                                for (int k = firstPair; k <= pairNum; k++)
+                                {
+                                    pair[k].endID = j;
+                                }
+                                break;
+                            }
+                        }
+
+                        //ペアなしフラグを立てる
+                        for (int k = firstPair; k <= pairNum; k++)
+                        {
+                            if (pair[k].endID == -1)
+                            {
+                                errorFlag[pair[k].ID] |= NoteErrorFlag.NoSlidePair;
+                            }
+                        }
+
+                        //登録完了
+                        pairNum++;
+                        break;
+
+                    //スライド子ノーツ（スライド親ノーツに挟まれていないノーツを検出する）
+                    case NoteType.SlideChildNote1:
+                    case NoteType.SlideChildNote2:
+                        //登録済みかを検索
+                        reg = false;
+                        foreach (ObjectPair p in pair)
+                        {
+                            if (p.nextID == i)
+                            {
+                                reg = true;
+                                break;
+                            }
+                        }
+                        if (reg)
+                        {
+                            continue;
+                        }
+
+                        //ペアなしフラグを立てる
+                        errorFlag[i] |= NoteErrorFlag.NoSlideParent;
+                        break;
+                }
+            }
+
+            return pair;
+        }
+
+        private static void CheckChart(Chart chartData)
+        {
+            int cnt = chartData.main.obj.Count;
+            NoteErrorFlag[] errorFlag = new NoteErrorFlag[cnt];
+            for (int i = 0; i < cnt; i++)
+            {
+                errorFlag[i] = NoteErrorFlag.None;
+            }
+
+            for (int i = 0; i < cnt; i++)
+            {
+                if (chartData.main.obj[i].bmscnt < chartData.start.bmscnt)
+                {
+                    errorFlag[i] |= NoteErrorFlag.InvalidTime;
+                }
+
+                NoteTypeRange validNoteTypeRange = NoteTypeRanges.Find(c => c.lane == chartData.main.obj[i].lane);
+                if ((chartData.main.obj[i].type < validNoteTypeRange.from) || (chartData.main.obj[i].type > validNoteTypeRange.to))
+                {
+                    errorFlag[i] |= NoteErrorFlag.InvalidType;
+                }
+
+                CreatePairList(chartData.main.obj, ref errorFlag);
+            }
+
+            for (int i = 0; i < cnt; i++)
+            {
+                if (errorFlag[i] == NoteErrorFlag.None)
+                {
+                    continue;
+                }
+
+                Console.ForegroundColor = ConsoleColor.Yellow;
+                if ((errorFlag[i] & NoteErrorFlag.InvalidTime) != 0)
+                {
+                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("曲の開始点より前にノーツがあります");
+                }
+                if ((errorFlag[i] & NoteErrorFlag.InvalidType) != 0)
+                {
+                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("ノーツ種類{0:x2}が{1}レーンにあります", chartData.main.obj[i].type, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                }
+                if ((errorFlag[i] & NoteErrorFlag.NoLongPair) != 0)
+                {
+                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("ペアになっていないロングノーツがあります");
+                }
+                if ((errorFlag[i] & NoteErrorFlag.NoSlidePair) != 0)
+                {
+                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("ペアになっていないスライドノーツがあります");
+                }
+                if ((errorFlag[i] & NoteErrorFlag.NoSlideParent) != 0)
+                {
+                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("スライド親ノーツのないスライド子ノーツがあります");
+                }
+            }
+            Console.ForegroundColor = ConsoleColor.Gray;
+        }
+
         private static List<Note> CalcAllNotes(Chart chartData)
         {
             CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
@@ -169,6 +476,7 @@ namespace bms2csv
             try
             {
                 Chart chartData = BmsReader.Read_Bms(f);
+                CheckChart(chartData);
                 List<Note> allNotes = CalcAllNotes(chartData);
 
                 string path;
@@ -223,7 +531,9 @@ namespace bms2csv
             }
             catch (Exception e)
             {
+                Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(e.Message);
+                Console.ForegroundColor = ConsoleColor.Gray;
                 return false;
             }
         }

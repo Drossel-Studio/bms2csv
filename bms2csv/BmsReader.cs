@@ -89,12 +89,7 @@ namespace bms2csv
 
         static int Read_Header_Int(string bms, string key)
         {
-            if (int.TryParse(Read_Header(bms, key), out int res))
-            {
-                return res;
-            }
-
-            return 0;
+            return int.Parse(Read_Header(bms, key));
         }
 
         static List<int> Slice_Two(string src, int digit = 10)
@@ -108,10 +103,7 @@ namespace bms2csv
                 {
                     style = NumberStyles.AllowHexSpecifier;
                 }
-                if (int.TryParse(num_text, style, CultureInfo.InvariantCulture, out int res))
-                {
-                    num.Add(res);
-                }
+                num.Add(int.Parse(num_text, style));
             }
             return num;
         }
@@ -175,7 +167,9 @@ namespace bms2csv
                 {
                     if (!set)
                     {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Warning: 曲の開始点がありません、1小節目の始まりを曲の開始点とします");
+                        Console.ForegroundColor = ConsoleColor.Gray;
                     }
                     break;
                 }
@@ -197,7 +191,9 @@ namespace bms2csv
                     }
                     if (set)
                     {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Warning: 曲の開始点が複数あります、最初の開始点のみが有効になります");
+                        Console.ForegroundColor = ConsoleColor.Gray;
                         continue;
                     }
                     long bmscnt = Measure.measureLength * measure + Measure.measureLength * i / cnt;
@@ -299,6 +295,10 @@ namespace bms2csv
                 rank = Read_Header_Int(bms, "rank")
             };
             List<BpmHeader> bpmHeader = Read_Header_Bpm(bms, "bpm", out chart.header.bpm);
+            if (chart.header.bpm == 0)
+            {
+                throw new ArgumentException("Error: BPMが不正です");
+            }
 
             chart.main = Read_Main(bms);
             chart.start = Read_Start(bms);
