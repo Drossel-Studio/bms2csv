@@ -168,7 +168,7 @@ namespace bms2csv
                     if (!set)
                     {
                         Console.ForegroundColor = ConsoleColor.Yellow;
-                        Console.WriteLine("Warning: 曲の開始点がありません、1小節目の始まりを曲の開始点とします");
+                        Console.WriteLine("Warning: 曲の開始点がありません、0小節目の始まりを曲の開始点とします");
                         Console.ForegroundColor = ConsoleColor.Gray;
                     }
                     break;
