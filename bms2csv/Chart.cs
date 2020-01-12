@@ -3,6 +3,11 @@ using System.Collections.Generic;
 
 namespace bms2csv
 {
+    public class Measure
+    {
+        public const long measureLength = 9600;
+    }
+
     public class Header
     {
         // ジャンル
@@ -27,26 +32,42 @@ namespace bms2csv
         public int rank;
     }
 
+    public class Object
+    {
+        public int measure;
+        public int unit_denom;
+        public int unit_numer;
+        public long bmscnt;
+        public int lane;
+        public int type;
+    }
+
     public class MainData
     {
-        public int channel;
-        public List<int> data;
-        public int line;
+        public List<Object> obj;
+    }
+
+    public class RhythmChange
+    {
+        public int measure;
+        public double mag;
     }
 
     public class BpmChange
     {
-        public int line;
-        public int[] data;
-        public bool index;
+        public int measure;
+        public int unit_denom;
+        public int unit_numer;
+        public long bmscnt;
+        public double bpm;
     }
 
     public class Chart
     {
-        public int start;
-        public List<BpmChange> bpm; // 曲中のBPM変化リスト
         public Header header;
-        public List<Tuple<int, double>> bpmHeader;
-        public List<MainData> main;
+        public List<RhythmChange> rhythm; // 曲中のBPM変化リスト
+        public List<BpmChange> bpm; // 曲中のBPM変化リスト
+        public Object start;
+        public MainData main;
     }
 }

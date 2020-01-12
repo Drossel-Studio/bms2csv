@@ -8,6 +8,13 @@ namespace bms2csv
 {
     class BmsConverter
     {
+        public class BpmChangeTiming
+        {
+            public long bmsCount;
+            public double bpm;
+            public long realTimeCount;
+        }
+
         public class Note
         {
             public long Time;
@@ -17,98 +24,141 @@ namespace bms2csv
 
         private static List<Note> CalcAllNotes(Chart chartData)
         {
-            // BMSカウントのままのデータを先に生成する
-            List<Note> bmsCountMainData = new List<Note>();
-            List<MainData> mainData = chartData.main;
-            foreach (MainData lineData in mainData)
+            CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
+            List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm, chartData);
+            foreach (BpmChangeTiming c in checkPoint)
             {
-                GetMainData(lineData, ref bmsCountMainData);
+                Console.WriteLine("({0}, {1}, {2})", c.bmsCount, c.bpm, c.realTimeCount);
             }
+            Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
 
-            List<Tuple<double, double, long>> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm, chartData);
-            foreach (Tuple<double, double, long> c in checkPoint)
-            {
-                Console.WriteLine(c);
-            }
-
-            return ConvertBmsCountToRealCount(bmsCountMainData, checkPoint, chartData.start);
+            return ConvertBmsCountToRealCount(chartData.main, checkPoint, startNote.Time);
         }
 
-        private static void GetMainData(MainData chartMainData, ref List<Note> mainData)
+        // 拍子変更に対応するBPM変更を作る
+        private static void CreateRhythmChange(List<RhythmChange> rhythmChange, double initialBpm, ref List<BpmChange> bpmChange)
         {
-            const int lineLength = 9600;
-            if (chartMainData.data.Count == 0)
+            rhythmChange.Sort((a, b) => a.measure - b.measure);
+            bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+
+            double currentBpm = initialBpm;
+            bool rhythmChanged = false;
+
+            int measure = 0;
+            int rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
+            if (rhythmIndex != -1)
             {
-                return;
-            }
-            int unit = lineLength / chartMainData.data.Count;
-            for (int i = 0; i < chartMainData.data.Count; i++)
-            {
-                int numData = Convert.ToInt32(chartMainData.data[i]);
-                if (numData == 0)
+                rhythmChanged = true;
+
+                int bpmIndex = bpmChange.FindIndex(c => ((c.measure == measure) && (c.unit_numer == 0)));
+                if (bpmIndex != -1)
                 {
-                    continue;
+                    currentBpm = bpmChange[bpmIndex].bpm;
+                    bpmChange[bpmIndex].bpm /= rhythmChange[rhythmIndex].mag;
+                }
+                else
+                {
+                    bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
+                }
+            }
+
+            foreach (BpmChange change in bpmChange)
+            {
+                if (change.measure != measure)
+                {
+                    if (rhythmChanged)
+                    {
+                        if ((change.measure != (measure + 1)) || (change.unit_numer != 0))
+                        {
+                            bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
+                        }
+                    }
+
+                    for (measure = measure + 1; measure < change.measure; measure++)
+                    {
+                        rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
+                        if (rhythmIndex != -1)
+                        {
+                            rhythmChanged = true;
+                            bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
+
+                            if ((change.measure != (measure + 1)) || (change.unit_numer != 0))
+                            {
+                                bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
+                            }
+                        }
+                    }
+
+                    measure = change.measure;
+                    rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
+                    if (rhythmIndex != -1)
+                    {
+                        rhythmChanged = true;
+
+                        if (change.unit_numer != 0)
+                        {
+                            bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
+                        }
+                    }
+                    else
+                    {
+                        rhythmChanged = false;
+                    }
                 }
 
-                mainData.Add(new Note { Time = i * unit + chartMainData.line * lineLength, Lane = chartMainData.channel, Type = numData });
+                if (rhythmChanged)
+                {
+                    currentBpm = change.bpm;
+                    change.bpm /= rhythmChange[rhythmIndex].mag;
+                }
             }
         }
 
         // BMSカウントと実時間(ms)の対応表を作る
-        private static List<Tuple<double, double, long>> CalcBpmChangeTiming(double initialBpm, List<BpmChange> bpmChangeArray, Chart chartData)
+        private static List<BpmChangeTiming> CalcBpmChangeTiming(double initialBpm, List<BpmChange> bpmChange, Chart chartData)
         {
-            bpmChangeArray.Sort((a, b) => a.line - b.line);
-            List<Tuple<double, double, long>> changeTimingList = new List<Tuple<double, double, long>> { Tuple.Create(0.0, initialBpm, 0L) };
+            bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+            List<BpmChangeTiming> changeTimingList = new List<BpmChangeTiming> { new BpmChangeTiming { bmsCount = 0L, bpm = initialBpm, realTimeCount = 0L } };
             double currentBpm = initialBpm;
-            foreach (var change in bpmChangeArray)
+            foreach (var change in bpmChange)
             {
-                int lineHeadBmsCount = change.line * 9600;
-                int cnt = change.data.Length;
-                for (var i = 0; i < cnt; i++)
-                {
-                    if (change.data[i] == 0)
-                    {
-                        continue;
-                    }
-
-                    double bpm = change.index ? chartData.bpmHeader.Find(n => n.Item1 == change.data[i]).Item2 : change.data[i];
-
-                    Tuple<double, double, long> beforePoint = changeTimingList[changeTimingList.Count - 1];
-                    double bmscnt = lineHeadBmsCount + 9600.0 * i / cnt;
-                    long realTimeCount = (long)((bmscnt - beforePoint.Item1) / 9600.0 * 60 / currentBpm * 4 * 1000 + beforePoint.Item3);
-                    changeTimingList.Add(Tuple.Create(bmscnt, bpm, realTimeCount));
-                    currentBpm = bpm;
-                }
+                BpmChangeTiming beforePoint = changeTimingList[changeTimingList.Count - 1];
+                long realTimeCount = (long)((double)(change.bmscnt - beforePoint.bmsCount) / Measure.measureLength * 60 / currentBpm * 4 * 1000 + beforePoint.realTimeCount);
+                changeTimingList.Add(new BpmChangeTiming { bmsCount = change.bmscnt, bpm = change.bpm, realTimeCount = realTimeCount });
+                currentBpm = change.bpm;
             }
+
             return changeTimingList;
         }
 
-        private static List<Note> ConvertBmsCountToRealCount(List<Note> bmsCountMainData, List<Tuple<double, double, long>> checkpoint, int start)
+        private static List<Note> ConvertBmsCountToRealCount(MainData bmsCountMainData, List<BpmChangeTiming> checkpoint, long start)
         {
-            for (var j = 0; j < bmsCountMainData.Count; j++)
+            List<Note> realCountMainData = new List<Note>();
+            bmsCountMainData.obj.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+            foreach (Object obj in bmsCountMainData.obj)
             {
-                bmsCountMainData[j] = GetRealCountMainData(bmsCountMainData[j], checkpoint, start);
+                realCountMainData.Add(GetRealCountMainData(obj, checkpoint, start));
             }
-            return bmsCountMainData;
+            return realCountMainData;
         }
 
-        private static Note GetRealCountMainData(Note srcData, IList<Tuple<double, double, long>> checkpoint, int start)
+        private static Note GetRealCountMainData(Object srcData, IList<BpmChangeTiming> checkpoint, long start)
         {
-            long bmsCount = srcData.Time;
-            Tuple<double, double, long> nearestCheckPoint = checkpoint[0];
-            foreach (var t in checkpoint)
+            long bmsCount = srcData.bmscnt;
+            BpmChangeTiming nearestCheckPoint = checkpoint[0];
+            foreach (var c in checkpoint)
             {
-                if (t.Item1 < bmsCount)
+                if (c.bmsCount < bmsCount)
                 {
-                    nearestCheckPoint = t;
+                    nearestCheckPoint = c;
                 }
                 else
                 {
                     break;
                 }
             }
-            long realTimeCount = (long)((bmsCount - nearestCheckPoint.Item1) / 9600.0 * 60 / nearestCheckPoint.Item2 * 4 * 1000 + nearestCheckPoint.Item3 - start);
-            return new Note { Time = realTimeCount, Lane = srcData.Lane, Type = srcData.Type };
+            long realTimeCount = (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
+            return new Note { Time = realTimeCount, Lane = srcData.lane, Type = srcData.type };
         }
 
 
