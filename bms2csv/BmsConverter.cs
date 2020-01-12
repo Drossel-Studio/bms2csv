@@ -302,27 +302,27 @@ namespace bms2csv
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 if ((errorFlag[i] & NoteErrorFlag.InvalidTime) != 0)
                 {
-                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("曲の開始点より前にノーツがあります");
                 }
                 if ((errorFlag[i] & NoteErrorFlag.InvalidType) != 0)
                 {
-                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ノーツ種類{0:x2}が{1}レーンにあります", chartData.main.obj[i].type, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                 }
                 if ((errorFlag[i] & NoteErrorFlag.NoLongPair) != 0)
                 {
-                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ペアになっていないロングノーツがあります");
                 }
                 if ((errorFlag[i] & NoteErrorFlag.NoSlidePair) != 0)
                 {
-                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ペアになっていないスライドノーツがあります");
                 }
                 if ((errorFlag[i] & NoteErrorFlag.NoSlideParent) != 0)
                 {
-                    Console.Write("Warning: {0}小節{1}/{2} レーン{3} ", chartData.main.obj[i].measure, (chartData.main.obj[i].unit_numer + 1), chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("スライド親ノーツのないスライド子ノーツがあります");
                 }
             }
