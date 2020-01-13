@@ -507,7 +507,7 @@ namespace bms2csv
                     }
                 }
 
-                filename = root + ".csv.meta";
+                filename = root + ".csv.header";
                 exportPath = Path.Combine(path, filename);
 
                 using (MemoryStream ms = new MemoryStream())

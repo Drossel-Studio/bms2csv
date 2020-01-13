@@ -80,7 +80,7 @@ namespace bms2csv
             }
             if (head == -1)
             {
-                return "NONE";
+                return "";
             }
             int start = head + key.Length + 1;
             int end = bms.IndexOf("\n", head);
