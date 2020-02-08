@@ -13,10 +13,10 @@ jobs:
     - name: Setup .NET Core
       uses: actions/setup-dotnet@v1
       with:
-        dotnet-version: 2.2.108
+        dotnet-version: 3.1.100
 
     - name: Build with dotnet
-      run: dotnet publish -c Release -r win-x64 -o out --self-contained true
+      run: dotnet publish -c Release -r win-x64 -o out /p:PublishSingleFile=true --self-contained true
 
     - name: Upload artifact
       uses: actions/upload-artifact@v1
