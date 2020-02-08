@@ -110,8 +110,10 @@ namespace bms2csv
 
         static MainData Read_Main(string bms)
         {
-            MainData main_data = new MainData();
-            main_data.obj = new List<Object>();
+            MainData main_data = new MainData
+            {
+                obj = new List<Object>()
+            };
             int head = bms.IndexOf("MAIN DATA FIELD");
             int measure = 0;
             while (head != -1)

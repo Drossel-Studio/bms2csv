@@ -332,7 +332,7 @@ namespace bms2csv
         private static List<Note> CalcAllNotes(Chart chartData)
         {
             CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
-            List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm, chartData);
+            List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
             foreach (BpmChangeTiming c in checkPoint)
             {
                 Console.WriteLine("({0}, {1}, {2})", c.bmsCount, c.bpm, c.realTimeCount);
@@ -381,7 +381,7 @@ namespace bms2csv
                         }
                     }
 
-                    for (measure = measure + 1; measure < change.measure; measure++)
+                    for (measure += 1; measure < change.measure; measure++)
                     {
                         rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
                         if (rhythmIndex != -1)
@@ -422,7 +422,7 @@ namespace bms2csv
         }
 
         // BMSカウントと実時間(ms)の対応表を作る
-        private static List<BpmChangeTiming> CalcBpmChangeTiming(double initialBpm, List<BpmChange> bpmChange, Chart chartData)
+        private static List<BpmChangeTiming> CalcBpmChangeTiming(double initialBpm, List<BpmChange> bpmChange)
         {
             bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
             List<BpmChangeTiming> changeTimingList = new List<BpmChangeTiming> { new BpmChangeTiming { bmsCount = 0L, bpm = initialBpm, realTimeCount = 0L } };
