@@ -381,7 +381,7 @@ namespace bms2csv
                         }
                     }
 
-                    for (measure += 1; measure < change.measure; measure++)
+                    for (measure++; measure < change.measure; measure++)
                     {
                         rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
                         if (rhythmIndex != -1)
