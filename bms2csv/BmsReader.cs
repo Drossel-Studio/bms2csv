@@ -278,7 +278,6 @@ namespace bms2csv
         {
             Chart chart = new Chart();
             string bms;
-            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             using (StreamReader bmsf = new StreamReader(filename, Encoding.GetEncoding("Shift_JIS")))
             {
                 bms = bmsf.ReadToEnd();

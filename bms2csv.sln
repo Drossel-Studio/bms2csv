@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 16
 VisualStudioVersion = 16.0.29613.14
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bms2csv", "bms2csv\bms2csv.csproj", "{8E1D70A4-EF4F-43D5-85B1-6C3BEC35BE4F}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "bms2csv", "bms2csv\bms2csv.csproj", "{CEAF2E0D-CE89-447D-9C56-AC1058666828}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -11,15 +11,15 @@ Global
 		Release|Any CPU = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{8E1D70A4-EF4F-43D5-85B1-6C3BEC35BE4F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{8E1D70A4-EF4F-43D5-85B1-6C3BEC35BE4F}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{8E1D70A4-EF4F-43D5-85B1-6C3BEC35BE4F}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{8E1D70A4-EF4F-43D5-85B1-6C3BEC35BE4F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CEAF2E0D-CE89-447D-9C56-AC1058666828}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CEAF2E0D-CE89-447D-9C56-AC1058666828}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CEAF2E0D-CE89-447D-9C56-AC1058666828}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CEAF2E0D-CE89-447D-9C56-AC1058666828}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {98C34B1C-926D-4360-9B70-729A90399735}
+		SolutionGuid = {8A323EA7-111D-4AD2-A14E-B4A71A736756}
 	EndGlobalSection
 EndGlobal
