@@ -6,6 +6,8 @@ namespace bms2csv
 {
     class Program
     {
+        private const ConsoleColor gray = ConsoleColor.Gray;
+
         static void Main(string[] args)
         {
             string PATH = ".";
@@ -15,13 +17,15 @@ namespace bms2csv
             string exportCSVPath = "";
             string wavePath = "";
             long viewerStartTime = 0;
+            bool success = false;
+            bool warning = false;
             int totalCount = 0;
             int successCount = 0;
             int failureCount = 0;
 
             if (args.Length > 0)
             {
-                if (args[0] != "-V")
+                if (!args[0].Equals("-V"))
                 {
                     viewerMode = false;
                     PATH = args[0];
@@ -40,7 +44,7 @@ namespace bms2csv
                 }
                 else
                 {
-                    if (args[1] != "-P")
+                    if (!args[1].Equals("-P"))
                     {
                         return;
                     }
@@ -106,7 +110,7 @@ namespace bms2csv
 
                 Console.WriteLine(string.Format("Convert: {0}", f));
 
-                if (BmsConverter.Convert_Bms(f, OUTPUT, out exportCSVPath, MEASURE, out wavePath, out viewerStartTime))
+                if (success = BmsConverter.Convert_Bms(f, OUTPUT, MEASURE, out exportCSVPath, out wavePath, out viewerStartTime, out warning))
                 {
                     successCount++;
                 }
@@ -124,6 +128,48 @@ namespace bms2csv
 
                 if (viewerMode)
                 {
+                    if (!File.Exists(wavePath))
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error: Waveファイルが見つかりません");
+                        Console.WriteLine(wavePath);
+                        Console.WriteLine();
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        success = false;
+                    }
+                    if (!File.Exists(exportCSVPath))
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("Error: CSVファイルが見つかりません");
+                        Console.WriteLine(exportCSVPath);
+                        Console.WriteLine();
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        success = false;
+                    }
+
+                    if (!success)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Red;
+                        Console.WriteLine("エラーが発生したため、UGUISU Viewerの起動を中止します");
+                        Console.ForegroundColor = ConsoleColor.Gray;
+                        Console.WriteLine("続行するには何かキーを押してください . . .");
+                        Console.ReadKey();
+                        return;
+                    }
+
+                    if (warning)
+                    {
+                        Console.ForegroundColor = ConsoleColor.Yellow;
+                        Console.WriteLine("警告が発生しています、UGUISU Viewerを起動しますか？[Y/N]");
+                        Console.ForegroundColor = gray;
+                        Console.WriteLine("続行するには何かキーを押してください . . .");
+                        string line = Console.ReadLine();
+                        if (!line.Equals("Y", StringComparison.OrdinalIgnoreCase))
+                        {
+                            return;
+                        }
+                    }
+
                     string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UGUISU.exe");
                     Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString());
                 }

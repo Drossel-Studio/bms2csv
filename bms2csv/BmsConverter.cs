@@ -267,8 +267,10 @@ namespace bms2csv
             return pair;
         }
 
-        private static void CheckChart(Chart chartData)
+        private static bool CheckChart(Chart chartData)
         {
+            bool result = false;
+
             int cnt = chartData.main.obj.Count;
             NoteErrorFlag[] errorFlag = new NoteErrorFlag[cnt];
             for (int i = 0; i < cnt; i++)
@@ -304,29 +306,36 @@ namespace bms2csv
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("曲の開始点より前にノーツがあります");
+                    result = true;
                 }
                 if ((errorFlag[i] & NoteErrorFlag.InvalidType) != 0)
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ノーツ種類{0:x2}が{1}レーンにあります", chartData.main.obj[i].type, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    result = true;
                 }
                 if ((errorFlag[i] & NoteErrorFlag.NoLongPair) != 0)
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ペアになっていないロングノーツがあります");
+                    result = true;
                 }
                 if ((errorFlag[i] & NoteErrorFlag.NoSlidePair) != 0)
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ペアになっていないスライドノーツがあります");
+                    result = true;
                 }
                 if ((errorFlag[i] & NoteErrorFlag.NoSlideParent) != 0)
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("スライド親ノーツのないスライド子ノーツがあります");
+                    result = true;
                 }
             }
             Console.ForegroundColor = ConsoleColor.Gray;
+
+            return result;
         }
 
         private static List<Note> CalcAllNotes(Chart chartData)
@@ -482,16 +491,17 @@ namespace bms2csv
             return (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
         }
 
-        public static bool Convert_Bms(string f, string outputPath, out string exportCSVPath, int measure, out string wavePath, out long viewerStartTime)
+        public static bool Convert_Bms(string f, string outputPath, int measure, out string exportCSVPath, out string wavePath, out long viewerStartTime, out bool warning)
         {
             exportCSVPath = "";
             wavePath = "";
             viewerStartTime = 0;
+            warning = false;
 
             try
             {
                 Chart chartData = BmsReader.Read_Bms(f);
-                CheckChart(chartData);
+                warning = CheckChart(chartData);
                 List<Note> allNotes = CalcAllNotes(chartData);
                 viewerStartTime = GetViewerStartTime(chartData, measure);
 
