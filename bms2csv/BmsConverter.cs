@@ -342,6 +342,15 @@ namespace bms2csv
             return ConvertBmsCountToRealCount(chartData.main, checkPoint, startNote.Time);
         }
 
+        private static long GetViewerStartTime(Chart chartData, int measure)
+        {
+            CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
+            List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
+            Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
+
+            return GetRealCount(Measure.measureLength * measure, checkPoint, startNote.Time);
+        }
+
         // 拍子変更に対応するBPM変更を作る
         private static void CreateRhythmChange(List<RhythmChange> rhythmChange, double initialBpm, ref List<BpmChange> bpmChange)
         {
@@ -452,6 +461,12 @@ namespace bms2csv
         private static Note GetRealCountMainData(Object srcData, IList<BpmChangeTiming> checkpoint, long start)
         {
             long bmsCount = srcData.bmscnt;
+            long realTimeCount = GetRealCount(bmsCount, checkpoint, start);
+            return new Note { Time = realTimeCount, Lane = srcData.lane, Type = srcData.type };
+        }
+
+        private static long GetRealCount(long bmsCount, IList<BpmChangeTiming> checkpoint, long start)
+        {
             BpmChangeTiming nearestCheckPoint = checkpoint[0];
             foreach (var c in checkpoint)
             {
@@ -464,21 +479,25 @@ namespace bms2csv
                     break;
                 }
             }
-            long realTimeCount = (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
-            return new Note { Time = realTimeCount, Lane = srcData.lane, Type = srcData.type };
+            return (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
         }
 
-
-        public static bool Convert_Bms(string f, string outputPath, out string exportPath)
+        public static bool Convert_Bms(string f, string outputPath, out string exportCSVPath, int measure, out string wavePath, out long viewerStartTime)
         {
-            exportPath = "";
+            exportCSVPath = "";
+            wavePath = "";
+            viewerStartTime = 0;
 
             try
             {
                 Chart chartData = BmsReader.Read_Bms(f);
                 CheckChart(chartData);
                 List<Note> allNotes = CalcAllNotes(chartData);
+                viewerStartTime = GetViewerStartTime(chartData, measure);
 
+                string originalPath = Path.GetDirectoryName(f);
+
+                string exportPath;
                 string path;
                 string filename;
                 string root = Path.GetFileNameWithoutExtension(f);
@@ -506,6 +525,7 @@ namespace bms2csv
                         output.WriteLine("{0},{1},{2}", note.Time, note.Lane, note.Type);
                     }
                 }
+                exportCSVPath = exportPath;
 
                 filename = root + ".csv.header";
                 exportPath = Path.Combine(path, filename);
@@ -526,6 +546,7 @@ namespace bms2csv
                         }
                     }
                 }
+                wavePath = Path.Combine(originalPath, chartData.header.wav);
 
                 return true;
             }
