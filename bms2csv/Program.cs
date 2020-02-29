@@ -1,18 +1,25 @@
 ﻿using System;
 using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
+using System.Text;
 
 namespace bms2csv
 {
     class Program
     {
+        [DllImport("kernel32.dll", EntryPoint = "GetPrivateProfileStringW", CharSet = CharSet.Unicode, SetLastError = true)]
+        static extern uint GetPrivateProfileString(string lpAppName, string lpKeyName, string lpDefault, StringBuilder lpReturnedString, uint nSize, string lpFileName);
+        
         private const ConsoleColor gray = ConsoleColor.Gray;
+        private const uint BufferSize = 256;
 
         static void Main(string[] args)
         {
             string PATH = ".";
             string OUTPUT = "";
             int MEASURE = 0;
+            int SPEED = 1;
             bool viewerMode = false;
             string exportCSVPath = "";
             string wavePath = "";
@@ -70,6 +77,15 @@ namespace bms2csv
                 {
                     PATH = args[3];
                     OUTPUT = Path.GetDirectoryName(PATH);
+                }
+            }
+            if (viewerMode)
+            {
+                StringBuilder returnedString = new StringBuilder((int)BufferSize);
+                uint size = GetPrivateProfileString("CONFIG", "Speed", "1", returnedString, BufferSize, "Config.ini");
+                if (size > 0)
+                {
+                    SPEED = int.Parse(returnedString.ToString());
                 }
             }
 
@@ -171,7 +187,7 @@ namespace bms2csv
                     }
 
                     string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UGUISU.exe");
-                    Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString());
+                    Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString());
                 }
             }
 
