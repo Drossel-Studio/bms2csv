@@ -315,7 +315,7 @@ namespace bms2csv
                 }
 
                 // チャンネル番号が異なる場合は除外
-                if (int.Parse(bms.Substring(head + 4, 2)) == ChangeRhythmChannel)
+                if (int.Parse(bms.Substring(head + 4, 2)) != ChangeRhythmChannel)
                 {
                     continue;
                 }

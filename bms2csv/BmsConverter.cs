@@ -369,12 +369,8 @@ namespace bms2csv
         /// </summary>
         /// <param name="chartData">譜面データ</param>
         /// <returns>ノーツリスト</returns>
-        private static List<Note> CalcAllNotes(Chart chartData)
+        private static List<Note> CalcAllNotes(Chart chartData, List<BpmChangeTiming> checkPoint)
         {
-            // BPM変換リストの作成
-            CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
-            List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
-
             // 曲の開始点の変換
             Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
 
@@ -388,12 +384,8 @@ namespace bms2csv
         /// <param name="chartData">譜面データ</param>
         /// <param name="measure">小節</param>
         /// <returns>小節の実開始時間 [ms]</returns>
-        private static long GetMeasureStartTime(Chart chartData, int measure)
+        private static long GetMeasureStartTime(Chart chartData, List<BpmChangeTiming> checkPoint, int measure)
         {
-            // BPM変換リストの作成
-            CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
-            List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
-
             // 曲の開始点の変換
             Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
 
@@ -541,7 +533,7 @@ namespace bms2csv
         /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
         /// <param name="start">曲の開始点 [ms]</param>
         /// <returns>ノーツリスト</returns>
-        private static List<Note> ConvertBmsCountToRealCount(MainData bmsCountMainData, IList<BpmChangeTiming> checkpoint, long start)
+        private static List<Note> ConvertBmsCountToRealCount(MainData bmsCountMainData, List<BpmChangeTiming> checkpoint, long start)
         {
             // 出力変数の初期化
             List<Note> realCountMainData = new List<Note>();
@@ -565,7 +557,7 @@ namespace bms2csv
         /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
         /// <param name="start">曲の開始点 [ms]</param>
         /// <returns>ノーツ</returns>
-        private static Note GetRealCountMainData(BmsObject srcData, IList<BpmChangeTiming> checkpoint, long start)
+        private static Note GetRealCountMainData(BmsObject srcData, List<BpmChangeTiming> checkpoint, long start)
         {
             long bmsCount = srcData.bmscnt;
             long realTimeCount = GetRealCount(bmsCount, checkpoint, start);
@@ -579,7 +571,7 @@ namespace bms2csv
         /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
         /// <param name="start">曲の開始点 [ms]</param>
         /// <returns>実時間 [ms]</returns>
-        private static long GetRealCount(long bmsCount, IList<BpmChangeTiming> checkpoint, long start)
+        private static long GetRealCount(long bmsCount, List<BpmChangeTiming> checkpoint, long start)
         {
             // 直前のBMSカウントと実時間の対応を取得
             BpmChangeTiming nearestCheckPoint = checkpoint[0];
@@ -598,23 +590,56 @@ namespace bms2csv
             return (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
         }
 
+        private static List<Note> ConvertNoteListForLoop(List<Note> notes, long loopStartTime, long loopEndTime, int loopDisplayNum)
+        {
+            // 出力変数の初期化
+            List<Note> notesForLoop = new List<Note>();
+
+            // ループ区間以外のノーツを削除
+            for (int i = (notes.Count - 1); i >= 0; i--)
+            {
+                if ((notes[i].Time < loopStartTime) || (notes[i].Time >= loopEndTime))
+                {
+                    notes.RemoveAt(i);
+                }
+            }
+
+            // ループ用ノーツリストの作成
+            long loopLength = loopEndTime - loopStartTime;
+            for (int i = 0; i < loopDisplayNum; i++)
+            {
+                foreach (Note note in notes)
+                {
+                    notesForLoop.Add(new Note { Time = (note.Time + loopLength * i), Lane = note.Lane, Type = note.Type });
+                }
+            }
+
+            return notesForLoop;
+        }
+
         /// <summary>
         /// BMSからCSVへの変換
         /// </summary>
         /// <param name="bmsFilePath">BMSファイルパス</param>
         /// <param name="outputPath">出力パス</param>
-        /// <param name="measure">再生を開始する小節 (ビューアモード用)</param>
+        /// <param name="startMeasure">再生を開始する小節 (ビューアモード用)</param>
+        /// <param name="endMeasure">再生を終了する小節 (ビューアモード用)</param>
+        /// <param name="loop">再生をループするか (ビューアモード用)</param>
+        /// <param name="loopDisplayNum">ループ時のノーツ表示回数 (ビューアモード用)</param>
         /// <param name="exportCSVPath">出力したCSVのパスを格納する変数</param>
         /// <param name="wavePath">再生するWAVEファイルのパスを格納する変数 (ビューアモード用)</param>
         /// <param name="viewerStartTime">再生を開始する実時間を格納する変数 (ビューアモード用)</param>
+        /// <param name="viewerEndTime">再生を終了する実時間を格納する変数 (ビューアモード用)</param>
         /// <param name="warning">変換警告の有無を格納する変数</param>
         /// <returns>変換エラーの有無</returns>
-        public static bool Convert_Bms(string bmsFilePath, string outputPath, int measure, out string exportCSVPath, out string wavePath, out long viewerStartTime, ref bool warning)
+        public static bool Convert_Bms(string bmsFilePath, string outputPath, int startMeasure, int endMeasure, bool loop, int loopDisplayNum, out string exportCSVPath, out string wavePath, out long viewerStartTime, out long viewerEndTime, out bool warning)
         {
             // 出力変数の初期化
             exportCSVPath = "";
             wavePath = "";
             viewerStartTime = 0;
+            viewerEndTime = 0;
+            warning = false;
 
             try
             {
@@ -628,11 +653,26 @@ namespace bms2csv
                 // 変換警告のチェック
                 warning = CheckChartWarning(chartData);
 
+                // BPM変換リストの作成
+                CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
+                List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
+                foreach (BpmChangeTiming c in checkPoint)
+                {
+                    Console.WriteLine("({0}, {1}, {2})", c.bmsCount, c.bpm, c.realTimeCount);
+                }
+
                 // ノーツへの変換
-                List<Note> allNotes = CalcAllNotes(chartData);
+                List<Note> allNotes = CalcAllNotes(chartData, checkPoint);
 
                 // 再生を開始する実時間の取得 (ビューアモード用)
-                viewerStartTime = GetMeasureStartTime(chartData, measure);
+                viewerStartTime = GetMeasureStartTime(chartData, checkPoint, startMeasure);
+                viewerEndTime = GetMeasureStartTime(chartData, checkPoint, endMeasure);
+
+                if (loop)
+                {
+                    // ループ用に変換
+                    allNotes = ConvertNoteListForLoop(allNotes, viewerStartTime, viewerEndTime, loopDisplayNum);
+                }
 
                 // 出力パスの作成
                 string exportPath;
@@ -679,33 +719,36 @@ namespace bms2csv
                 exportPath = Path.Combine(path, filename);
 
                 // ヘッダの出力
-                MemoryStream ms = null;
-                try
+                using (MemoryStream ms = new MemoryStream())
+                using (StreamReader sr = new StreamReader(ms))
                 {
-                    ms = new MemoryStream();
-                    using (StreamReader sr = new StreamReader(ms))
+                    DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(Header));
+                    serializer.WriteObject(ms, chartData.header);
+                    ms.Position = 0;
+
+                    string json = sr.ReadToEnd();
+
+                    using (StreamWriter output = new StreamWriter(exportPath, false, encode))
                     {
-                        ms = null;
-
-                        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(Header));
-                        serializer.WriteObject(ms, chartData.header);
-                        ms.Position = 0;
-
-                        string json = sr.ReadToEnd();
-
-                        using (StreamWriter output = new StreamWriter(exportPath, false, encode))
-                        {
-                            output.WriteLine($"{json}");
-                        }
+                        output.WriteLine($"{json}");
                     }
-                }
-                finally
-                {
-                    ms?.Dispose();
                 }
 
                 // 再生するWAVEファイルのパスを作成 (ビューアモード用)
-                wavePath = Path.Combine(originalPath, chartData.header.wav);
+                if (!loop)
+                {
+                    wavePath = Path.Combine(originalPath, chartData.header.wav);
+                }
+                else
+                {
+                    root = Path.GetFileNameWithoutExtension(chartData.header.wav);
+                    filename = root + "_smplloop.wav";
+                    wavePath = Path.Combine(originalPath, filename);
+
+                    //ループ用にWAVEファイルを編集
+                    string originalWavePath = Path.Combine(originalPath, chartData.header.wav);
+                    WaveFileEditor.AddSampleLoop(originalWavePath, wavePath, viewerStartTime, viewerEndTime, ref warning);
+                }
 
                 return true;
             }

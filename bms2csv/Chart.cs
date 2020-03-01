@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace bms2csv
 {
-    public class Measure
+    static public class Measure
     {
         public const long measureLength = 9600;
     }

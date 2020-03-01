@@ -25,16 +25,19 @@ namespace bms2csv
             string PATH = ".";
             string OUTPUT = "";
             int MEASURE = 0;
+            int LOOP_MEASURE = 0;
             int SPEED = 1;
+            int LOOP_DISPLAY_NUM = 1;
 
             // 内部処理用
             bool viewerMode = false;
+            bool loopMode = false;
             string exportCSVPath;
             string wavePath;
             long viewerStartTime;
             long viewerEndTime;
             bool success;
-            bool warning = false;
+            bool warning;
 
             // 変換結果
             int totalCount = 0;
@@ -48,6 +51,7 @@ namespace bms2csv
                 {
                     // 一括変換モード: BMSファイルのパス
                     viewerMode = false;
+                    loopMode = false;
                     PATH = args[0];
                 }
                 else
@@ -67,8 +71,16 @@ namespace bms2csv
                 else
                 {
                     // ビューアモード: 再生モード
-                    if (!args[1].Equals("-P"))
+                    if (args[1].Equals("-P"))
                     {
+                        loopMode = false;
+                    }
+                    else if(args[1].Equals("-R"))
+                    {
+                        loopMode = true;
+                    }
+                    else
+                    { 
                         return;
                     }
                 }
@@ -98,16 +110,39 @@ namespace bms2csv
                 }
             }
 
+            // ループ設定の読み込み
+            if (loopMode)
+            {
+                Console.WriteLine("ループする小節数を入力してください (開始小節: {0}小節)", MEASURE);
+                if (!int.TryParse(Console.ReadLine(), out LOOP_MEASURE))
+                {
+                    loopMode = false;
+                }
+
+                if (LOOP_MEASURE < 1)
+                {
+                    loopMode = false;
+                }
+            }
+
             // INIファイルの読み込み
             if (viewerMode)
             {
-                // ハイスピの読み込み
                 StringBuilder returnedString = new StringBuilder((int)BufferSize);
                 string iniPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config.ini");
+
+                // ハイスピの読み込み
                 uint size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "Speed", "1", returnedString, BufferSize, iniPath);
                 if (size > 0)
                 {
                     SPEED = int.Parse(returnedString.ToString());
+                }
+
+                // ループ時のノーツ表示回数の読み込み
+                size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "LoopDisplayNum", "1", returnedString, BufferSize, iniPath);
+                if (size > 0)
+                {
+                    LOOP_DISPLAY_NUM = int.Parse(returnedString.ToString());
                 }
             }
 
@@ -158,7 +193,7 @@ namespace bms2csv
                 Console.WriteLine(string.Format("Convert: {0}", f));
 
                 // 変換
-                if (success = BmsConverter.Convert_Bms(f, OUTPUT, MEASURE, out exportCSVPath, out wavePath, out viewerStartTime, ref warning))
+                if (success = BmsConverter.Convert_Bms(f, OUTPUT, MEASURE, (MEASURE + LOOP_MEASURE), loopMode, LOOP_DISPLAY_NUM, out exportCSVPath, out wavePath, out viewerStartTime, out viewerEndTime, out warning))
                 {
                     successCount++;
                 }
@@ -226,7 +261,8 @@ namespace bms2csv
 
                     // ビューアの起動
                     string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UGUISU.exe");
-                    Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString());
+                    string loopFlag = loopMode ? "1" : "0";
+                    Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag);
                 }
             }
 
