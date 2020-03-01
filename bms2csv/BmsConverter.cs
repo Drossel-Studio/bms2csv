@@ -6,30 +6,16 @@ using System.Text;
 
 namespace bms2csv
 {
+    /// <summary>
+    /// BMSをCSVに変換するクラス
+    /// </summary>
     class BmsConverter
     {
-        public class BpmChangeTiming
-        {
-            public long bmsCount;
-            public double bpm;
-            public long realTimeCount;
-        }
-
         public class Note
         {
             public long Time;
             public int Lane;
             public int Type;
-        }
-
-        private enum NoteErrorFlag
-        {
-            None = 0,
-            InvalidTime = 0b1,
-            InvalidType = 0b10,
-            NoLongPair = 0b100,
-            NoSlidePair = 0b1000,
-            NoSlideParent = 0b10000
         }
 
         private class NoteTypeRange
@@ -39,16 +25,14 @@ namespace bms2csv
             public int to;
         }
 
-        readonly private static List<NoteTypeRange> NoteTypeRanges = new List<NoteTypeRange>()
+        private class ObjectPair
         {
-            new NoteTypeRange {lane = 1, from = 0x02, to = 0x0F},
-            new NoteTypeRange {lane = 2, from = 0x02, to = 0x0F},
-            new NoteTypeRange {lane = 3, from = 0x02, to = 0x0F},
-            new NoteTypeRange {lane = 4, from = 0x02, to = 0x0F},
-            new NoteTypeRange {lane = 5, from = 0x10, to = 0x1F},
-            new NoteTypeRange {lane = 6, from = 0x10, to = 0x1F},
-            new NoteTypeRange {lane = 7, from = 0x20, to = 0x2F}
-        };
+            public int type;
+            public int ID;
+            public int startID;
+            public int endID;
+            public int nextID;
+        }
 
         private class LaneName
         {
@@ -56,16 +40,12 @@ namespace bms2csv
             public string name;
         }
 
-        readonly private static List<LaneName> LaneNames = new List<LaneName>()
-            {
-            new LaneName{lane = 1, name = "1"},
-            new LaneName{lane = 2, name = "2"},
-            new LaneName{lane = 3, name = "3"},
-            new LaneName{lane = 4, name = "4"},
-            new LaneName{lane = 5, name = "L"},
-            new LaneName{lane = 6, name = "R"},
-            new LaneName{lane = 7, name = "SP"}
-            };
+        public class BpmChangeTiming
+        {
+            public long bmsCount;
+            public double bpm;
+            public long realTimeCount;
+        }
 
         private enum NoteType
         {
@@ -80,17 +60,51 @@ namespace bms2csv
             SpecialNote = 0x20
         }
 
-        private class ObjectPair
+        private enum NoteErrorFlag
         {
-            public int type;
-            public int ID;
-            public int startID;
-            public int endID;
-            public int nextID;
+            None = 0,
+            InvalidTime = 0b1,
+            InvalidType = 0b10,
+            NoLongPair = 0b100,
+            NoSlidePair = 0b1000,
+            NoSlideParent = 0b10000
         }
 
-        //ペアノーツリストの作成
-        private static List<ObjectPair> CreatePairList(List<Object> obj, ref NoteErrorFlag[] errorFlag)
+        /// <summary>
+        /// レーンごとの有効なノーツ番号
+        /// </summary>
+        readonly private static List<NoteTypeRange> NoteTypeRanges = new List<NoteTypeRange>()
+        {
+            new NoteTypeRange {lane = 1, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 2, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 3, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 4, from = 0x02, to = 0x0F},
+            new NoteTypeRange {lane = 5, from = 0x10, to = 0x1F},
+            new NoteTypeRange {lane = 6, from = 0x10, to = 0x1F},
+            new NoteTypeRange {lane = 7, from = 0x20, to = 0x2F}
+        };
+
+        /// <summary>
+        /// レーンの名称
+        /// </summary>
+        readonly private static List<LaneName> LaneNames = new List<LaneName>()
+            {
+            new LaneName{lane = 1, name = "1"},
+            new LaneName{lane = 2, name = "2"},
+            new LaneName{lane = 3, name = "3"},
+            new LaneName{lane = 4, name = "4"},
+            new LaneName{lane = 5, name = "L"},
+            new LaneName{lane = 6, name = "R"},
+            new LaneName{lane = 7, name = "SP"}
+            };
+
+        /// <summary>
+        /// オブジェクトペアリストの作成
+        /// </summary>
+        /// <param name="obj">オブジェクトの配列</param>
+        /// <param name="errorFlag">エラーフラグを出力する配列</param>
+        /// <returns>オブジェクトペアリスト</returns>
+        private static List<ObjectPair> CreatePairList(List<BmsObject> obj, ref NoteErrorFlag[] errorFlag)
         {
             int pairNum;            //登録したペアリストの数
             int firstPair;          //スライド親ノーツのペアリストインデックス（スライドノーツ登録中に使用）
@@ -267,32 +281,43 @@ namespace bms2csv
             return pair;
         }
 
-        private static bool CheckChart(Chart chartData)
+        /// <summary>
+        /// 譜面の変換警告チェック
+        /// </summary>
+        /// <param name="chartData">譜面データ</param>
+        /// <returns>変換警告の有無</returns>
+        private static bool CheckChartWarning(Chart chartData)
         {
+            // 出力変数の初期化
             bool result = false;
 
+            // 処理用変数の初期化
             int cnt = chartData.main.obj.Count;
             NoteErrorFlag[] errorFlag = new NoteErrorFlag[cnt];
             for (int i = 0; i < cnt; i++)
             {
                 errorFlag[i] = NoteErrorFlag.None;
             }
-
+            
+            // 変換警告のチェック
             for (int i = 0; i < cnt; i++)
             {
+                // 曲の開始点以前にオブジェクトがある
                 if (chartData.main.obj[i].bmscnt < chartData.start.bmscnt)
                 {
                     errorFlag[i] |= NoteErrorFlag.InvalidTime;
                 }
 
+                // ノーツ番号が有効な範囲でない
                 NoteTypeRange validNoteTypeRange = NoteTypeRanges.Find(c => c.lane == chartData.main.obj[i].lane);
                 if ((chartData.main.obj[i].type < validNoteTypeRange.from) || (chartData.main.obj[i].type > validNoteTypeRange.to))
                 {
                     errorFlag[i] |= NoteErrorFlag.InvalidType;
                 }
-
-                CreatePairList(chartData.main.obj, ref errorFlag);
             }
+
+            // オブジェクトペアの確認
+            CreatePairList(chartData.main.obj, ref errorFlag);
 
             for (int i = 0; i < cnt; i++)
             {
@@ -301,6 +326,7 @@ namespace bms2csv
                     continue;
                 }
 
+                // 警告の出力
                 Console.ForegroundColor = ConsoleColor.Yellow;
                 if ((errorFlag[i] & NoteErrorFlag.InvalidTime) != 0)
                 {
@@ -338,37 +364,60 @@ namespace bms2csv
             return result;
         }
 
+        /// <summary>
+        /// オブジェクトからノーツへの変換
+        /// </summary>
+        /// <param name="chartData">譜面データ</param>
+        /// <returns>ノーツリスト</returns>
         private static List<Note> CalcAllNotes(Chart chartData)
         {
+            // BPM変換リストの作成
             CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
             List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
-            foreach (BpmChangeTiming c in checkPoint)
-            {
-                Console.WriteLine("({0}, {1}, {2})", c.bmsCount, c.bpm, c.realTimeCount);
-            }
+
+            // 曲の開始点の変換
             Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
 
+            // 全ノーツの変換
             return ConvertBmsCountToRealCount(chartData.main, checkPoint, startNote.Time);
         }
 
-        private static long GetViewerStartTime(Chart chartData, int measure)
+        /// <summary>
+        /// 小節の実開始時間を取得
+        /// </summary>
+        /// <param name="chartData">譜面データ</param>
+        /// <param name="measure">小節</param>
+        /// <returns>小節の実開始時間 [ms]</returns>
+        private static long GetMeasureStartTime(Chart chartData, int measure)
         {
+            // BPM変換リストの作成
             CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
             List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
+
+            // 曲の開始点の変換
             Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
 
+            // 小節の実開始時間の変換
             return GetRealCount(Measure.measureLength * measure, checkPoint, startNote.Time);
         }
 
-        // 拍子変更に対応するBPM変更を作る
+        /// <summary>
+        /// 拍子変更に対応するBPM変更を作る
+        /// </summary>
+        /// <param name="rhythmChange">拍子変更のリスト</param>
+        /// <param name="initialBpm">初期BPM</param>
+        /// <param name="bpmChange">BPM変更のリスト</param>
         private static void CreateRhythmChange(List<RhythmChange> rhythmChange, double initialBpm, ref List<BpmChange> bpmChange)
         {
+            // リストのソート
             rhythmChange.Sort((a, b) => a.measure - b.measure);
             bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
 
+            // 処理用変数の初期化
             double currentBpm = initialBpm;
             bool rhythmChanged = false;
 
+            // 0小節目の拍子変更の検索
             int measure = 0;
             int rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
             if (rhythmIndex != -1)
@@ -378,11 +427,13 @@ namespace bms2csv
                 int bpmIndex = bpmChange.FindIndex(c => ((c.measure == measure) && (c.unit_numer == 0)));
                 if (bpmIndex != -1)
                 {
+                    // 小節の最初でBPM変更がある場合はBPM変更の書き換え
                     currentBpm = bpmChange[bpmIndex].bpm;
                     bpmChange[bpmIndex].bpm /= rhythmChange[rhythmIndex].mag;
                 }
                 else
                 {
+                    // BPM変更がない場合はBPM変更の新規作成
                     bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
                 }
             }
@@ -391,29 +442,37 @@ namespace bms2csv
             {
                 if (change.measure != measure)
                 {
+                    // 当該小節のBMP変更でない場合
                     if (rhythmChanged)
                     {
+                        // 当該小節で拍子変更している場合
                         if ((change.measure != (measure + 1)) || (change.unit_numer != 0))
                         {
+                            // 次小節の最初でBPM変更がない場合は打ち消し用BPM変更の新規作成
                             bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
                         }
                     }
 
+                    // BPM変更がない小節での拍子変更
                     for (measure++; measure < change.measure; measure++)
                     {
                         rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
                         if (rhythmIndex != -1)
                         {
                             rhythmChanged = true;
+
+                            // 拍子変更に対応するBPM変更の作成
                             bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
 
                             if ((change.measure != (measure + 1)) || (change.unit_numer != 0))
                             {
+                                // 次小節の最初でBPM変更がない場合は打ち消し用BPM変更の新規作成
                                 bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
                             }
                         }
                     }
 
+                    // BPM変更がある小節での拍子変更
                     measure = change.measure;
                     rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
                     if (rhythmIndex != -1)
@@ -422,62 +481,109 @@ namespace bms2csv
 
                         if (change.unit_numer != 0)
                         {
+                            // 小節の最初以外の場合はBPM変更の作成
                             bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
                         }
                     }
                     else
                     {
+                        // 当該小節での拍子変更なし
                         rhythmChanged = false;
                     }
                 }
 
+                // 現在のBPMを変更
+                currentBpm = change.bpm;
                 if (rhythmChanged)
                 {
-                    currentBpm = change.bpm;
+                    // 拍子変更中ならBPM変更の書き換え
                     change.bpm /= rhythmChange[rhythmIndex].mag;
                 }
             }
         }
 
-        // BMSカウントと実時間(ms)の対応表を作る
+        /// <summary>
+        /// BMSカウントと実時間の対応表を作成
+        /// </summary>
+        /// <param name="initialBpm">初期BPM</param>
+        /// <param name="bpmChange">BPM変更のリスト</param>
+        /// <returns></returns>
         private static List<BpmChangeTiming> CalcBpmChangeTiming(double initialBpm, List<BpmChange> bpmChange)
         {
-            bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+            // 出力変数の初期化
             List<BpmChangeTiming> changeTimingList = new List<BpmChangeTiming> { new BpmChangeTiming { bmsCount = 0L, bpm = initialBpm, realTimeCount = 0L } };
+
+            // BPM変更のリストのソート
+            bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+
+            // 処理用変数の初期化
             double currentBpm = initialBpm;
-            foreach (var change in bpmChange)
+
+            // BPM変更の検索
+            foreach (BpmChange change in bpmChange)
             {
+                // BMSカウントと実時間の対応表を作る
                 BpmChangeTiming beforePoint = changeTimingList[changeTimingList.Count - 1];
                 long realTimeCount = (long)((double)(change.bmscnt - beforePoint.bmsCount) / Measure.measureLength * 60 / currentBpm * 4 * 1000 + beforePoint.realTimeCount);
                 changeTimingList.Add(new BpmChangeTiming { bmsCount = change.bmscnt, bpm = change.bpm, realTimeCount = realTimeCount });
+
+                // 現在のBPMの変更
                 currentBpm = change.bpm;
             }
 
             return changeTimingList;
         }
 
-        private static List<Note> ConvertBmsCountToRealCount(MainData bmsCountMainData, List<BpmChangeTiming> checkpoint, long start)
+        /// <summary>
+        /// メインデータからノーツリストへの変換
+        /// </summary>
+        /// <param name="bmsCountMainData">メインデータ</param>
+        /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
+        /// <param name="start">曲の開始点 [ms]</param>
+        /// <returns>ノーツリスト</returns>
+        private static List<Note> ConvertBmsCountToRealCount(MainData bmsCountMainData, IList<BpmChangeTiming> checkpoint, long start)
         {
+            // 出力変数の初期化
             List<Note> realCountMainData = new List<Note>();
+
+            // オブジェクトのソート
             bmsCountMainData.obj.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
-            foreach (Object obj in bmsCountMainData.obj)
+
+            // オブジェクトからノーツへの変換
+            foreach (BmsObject obj in bmsCountMainData.obj)
             {
                 realCountMainData.Add(GetRealCountMainData(obj, checkpoint, start));
             }
+
             return realCountMainData;
         }
 
-        private static Note GetRealCountMainData(Object srcData, IList<BpmChangeTiming> checkpoint, long start)
+        /// <summary>
+        /// オブジェクトからノーツへの変換
+        /// </summary>
+        /// <param name="srcData">オブジェクト</param>
+        /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
+        /// <param name="start">曲の開始点 [ms]</param>
+        /// <returns>ノーツ</returns>
+        private static Note GetRealCountMainData(BmsObject srcData, IList<BpmChangeTiming> checkpoint, long start)
         {
             long bmsCount = srcData.bmscnt;
             long realTimeCount = GetRealCount(bmsCount, checkpoint, start);
             return new Note { Time = realTimeCount, Lane = srcData.lane, Type = srcData.type };
         }
 
+        /// <summary>
+        /// BMSカウントから実時間への変換
+        /// </summary>
+        /// <param name="bmsCount">BMSカウント</param>
+        /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
+        /// <param name="start">曲の開始点 [ms]</param>
+        /// <returns>実時間 [ms]</returns>
         private static long GetRealCount(long bmsCount, IList<BpmChangeTiming> checkpoint, long start)
         {
+            // 直前のBMSカウントと実時間の対応を取得
             BpmChangeTiming nearestCheckPoint = checkpoint[0];
-            foreach (var c in checkpoint)
+            foreach (BpmChangeTiming c in checkpoint)
             {
                 if (c.bmsCount < bmsCount)
                 {
@@ -488,30 +594,52 @@ namespace bms2csv
                     break;
                 }
             }
+
             return (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
         }
 
-        public static bool Convert_Bms(string f, string outputPath, int measure, out string exportCSVPath, out string wavePath, out long viewerStartTime, out bool warning)
+        /// <summary>
+        /// BMSからCSVへの変換
+        /// </summary>
+        /// <param name="bmsFilePath">BMSファイルパス</param>
+        /// <param name="outputPath">出力パス</param>
+        /// <param name="measure">再生を開始する小節 (ビューアモード用)</param>
+        /// <param name="exportCSVPath">出力したCSVのパスを格納する変数</param>
+        /// <param name="wavePath">再生するWAVEファイルのパスを格納する変数 (ビューアモード用)</param>
+        /// <param name="viewerStartTime">再生を開始する実時間を格納する変数 (ビューアモード用)</param>
+        /// <param name="warning">変換警告の有無を格納する変数</param>
+        /// <returns>変換エラーの有無</returns>
+        public static bool Convert_Bms(string bmsFilePath, string outputPath, int measure, out string exportCSVPath, out string wavePath, out long viewerStartTime, ref bool warning)
         {
+            // 出力変数の初期化
             exportCSVPath = "";
             wavePath = "";
             viewerStartTime = 0;
-            warning = false;
 
             try
             {
-                Chart chartData = BmsReader.Read_Bms(f);
-                warning = CheckChart(chartData);
-                List<Note> allNotes = CalcAllNotes(chartData);
-                viewerStartTime = GetViewerStartTime(chartData, measure);
-
-                string originalPath = Path.GetDirectoryName(f);
-
-                string exportPath;
+                // 処理用変数
                 string path;
                 string filename;
-                string root = Path.GetFileNameWithoutExtension(f);
-                if (outputPath == "")
+
+                // BMSファイルの読み込み
+                Chart chartData = BmsReader.Read_Bms(bmsFilePath);
+
+                // 変換警告のチェック
+                warning = CheckChartWarning(chartData);
+
+                // ノーツへの変換
+                List<Note> allNotes = CalcAllNotes(chartData);
+
+                // 再生を開始する実時間の取得 (ビューアモード用)
+                viewerStartTime = GetMeasureStartTime(chartData, measure);
+
+                // 出力パスの作成
+                string exportPath;
+
+                // 出力ディレクトリの作成
+                string originalPath = Path.GetDirectoryName(bmsFilePath);
+                if (string.IsNullOrEmpty(outputPath))
                 {
                     path = @"./csv";
                 }
@@ -519,15 +647,22 @@ namespace bms2csv
                 {
                     path = outputPath;
                 }
+
+                // 出力ディレクトリがなければ作成する
                 if (!Directory.Exists(path))
                 {
                     Directory.CreateDirectory(path);
                 }
 
+                // 出力CSVファイル名の作成
+                string root = Path.GetFileNameWithoutExtension(bmsFilePath);
                 filename = root + ".csv";
-                exportPath = Path.Combine(path, filename);
-                Encoding encode = new UTF8Encoding(false);
 
+                // 出力CSVパスの作成
+                exportPath = Path.Combine(path, filename);
+
+                // CSVの出力
+                Encoding encode = new UTF8Encoding(false);
                 using (StreamWriter output = new StreamWriter(exportPath, false, encode))
                 {
                     foreach (Note note in allNotes)
@@ -537,18 +672,26 @@ namespace bms2csv
                 }
                 exportCSVPath = exportPath;
 
+                // 出力ヘッダファイル名の作成
                 filename = root + ".csv.header";
+
+                // 出力ヘッダパスの作成
                 exportPath = Path.Combine(path, filename);
 
-                using (MemoryStream ms = new MemoryStream())
+                // ヘッダの出力
+                MemoryStream ms = null;
+                try
                 {
+                    ms = new MemoryStream();
                     using (StreamReader sr = new StreamReader(ms))
                     {
-                        var serializer = new DataContractJsonSerializer(typeof(Header));
+                        ms = null;
+
+                        DataContractJsonSerializer serializer = new DataContractJsonSerializer(typeof(Header));
                         serializer.WriteObject(ms, chartData.header);
                         ms.Position = 0;
 
-                        var json = sr.ReadToEnd();
+                        string json = sr.ReadToEnd();
 
                         using (StreamWriter output = new StreamWriter(exportPath, false, encode))
                         {
@@ -556,15 +699,23 @@ namespace bms2csv
                         }
                     }
                 }
+                finally
+                {
+                    ms?.Dispose();
+                }
+
+                // 再生するWAVEファイルのパスを作成 (ビューアモード用)
                 wavePath = Path.Combine(originalPath, chartData.header.wav);
 
                 return true;
             }
             catch (Exception e)
             {
+                // 変換エラー発生時
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(e.Message);
                 Console.ForegroundColor = ConsoleColor.Gray;
+
                 return false;
             }
         }

@@ -6,6 +6,9 @@ using System.Text;
 
 namespace bms2csv
 {
+    /// <summary>
+    /// BMSファイルの読み込みクラス
+    /// </summary>
     class BmsReader
     {
         private class Lane
@@ -14,8 +17,16 @@ namespace bms2csv
             public int laneNumber;
         }
 
-        //レーンとチャンネルの対応設定
-        readonly private static List<Lane> Lanes = new List<Lane>()
+        private class BpmHeader
+        {
+            public int index;
+            public double bpm;
+        }
+
+        /// <summary>
+        /// レーンとチャンネルの対応設定
+        /// </summary>
+        static readonly private List<Lane> Lanes = new List<Lane>()
         {
             new Lane{channel = 11, laneNumber = 5 },
             new Lane{channel = 12, laneNumber = 1 },
@@ -26,20 +37,46 @@ namespace bms2csv
             new Lane{channel = 19, laneNumber = 7 }
         };
 
-        private class BpmHeader
-        {
-            public int index;
-            public double bpm;
-        }
+        /// <summary>
+        /// 曲の開始点を入力するチャンネル
+        /// </summary>
+        private const int StartChannel = 1;
 
-        private static List<BpmHeader> Read_Header_Bpm(string bms, string key, out double initialBpm)
+        /// <summary>
+        /// 拍子変更を入力するチャンネル
+        /// </summary>
+        private const int ChangeRhythmChannel = 2;
+
+        /// <summary>
+        /// BPM変更を入力するチャンネル
+        /// </summary>
+        private const int ChangeBPMChannel = 3;
+
+        /// <summary>
+        /// 拡張BPM変更を入力するチャンネル
+        /// </summary>
+        private const int ChangeBPMExChannel = 8;
+
+        /// <summary>
+        /// BPM変更のヘッダを読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <param name="initialBpm">初期BPMの出力用変数</param>
+        /// <returnsヘッダのデータ</returns>
+        private static List<BpmHeader> Read_Header_Bpm(string bms, out double initialBpm)
         {
+            // 出力変数の初期化
             List<BpmHeader> bpmHeader = new List<BpmHeader>();
             initialBpm = 0;
 
+            // ヘッダのキーの設定
+            string key = "bpm";
+
+            // 読み込み
             int head = 0;
             while (head != -1)
             {
+                // キーの検索
                 string search_key = String.Format("#{0}", key);
                 int lastHead = head;
                 head = bms.IndexOf(search_key, head + 1);
@@ -52,8 +89,10 @@ namespace bms2csv
                     break;
                 }
 
+                // データの読み込み
                 if (bms.Substring(head + key.Length + 1, 1) != " ")
                 {
+                    // 初期BPM
                     int index = int.Parse(bms.Substring(head + key.Length + 1, 2), NumberStyles.AllowHexSpecifier);
                     int start = head + key.Length + 3;
                     int end = bms.IndexOf("\n", head);
@@ -62,6 +101,7 @@ namespace bms2csv
                 }
                 else
                 {
+                    // 拡張BPM変更
                     int start = head + key.Length + 1;
                     int end = bms.IndexOf("\n", head);
                     initialBpm = double.Parse(bms.Substring(start, end - start - 1));
@@ -71,8 +111,15 @@ namespace bms2csv
             return bpmHeader;
         }
 
+        /// <summary>
+        /// ヘッダの読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <param name="key">ヘッダのキー</param>
+        /// <returns>ヘッダのデータ</returns>
         static string Read_Header(string bms, string key)
         {
+            // キーの検索
             int head = bms.IndexOf(key);
             if (head == -1)
             {
@@ -82,19 +129,36 @@ namespace bms2csv
             {
                 return "";
             }
+
+            // データの読み込み
             int start = head + key.Length + 1;
             int end = bms.IndexOf("\n", head);
             return bms.Substring(start, end - start - 1);
         }
 
+        /// <summary>
+        /// ヘッダの読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <param name="key">ヘッダのキー</param>
+        /// <returns>ヘッダのデータ</returns>
         static int Read_Header_Int(string bms, string key)
         {
             return int.Parse(Read_Header(bms, key));
         }
 
+        /// <summary>
+        /// 数字列を2桁ごとに分割してリストにする
+        /// </summary>
+        /// <param name="src">数字列</param>
+        /// <param name="digit">進数</param>
+        /// <returns>分割された数字のリスト</returns>
         static List<int> Slice_Two(string src, int digit = 10)
         {
+            // 出力変数の初期化
             List<int> num = new List<int>();
+
+            //数字列の分割
             for (int i = 0; i < src.Length; i += 2)
             {
                 string num_text = src.Substring(i, 2);
@@ -105,85 +169,104 @@ namespace bms2csv
                 }
                 num.Add(int.Parse(num_text, style));
             }
+
             return num;
         }
 
+        /// <summary>
+        /// メインデータの読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <returns>メインデータ</returns>
         static MainData Read_Main(string bms)
         {
+            // 出力用変数の初期化
             MainData main_data = new MainData
             {
-                obj = new List<Object>()
+                obj = new List<BmsObject>()
             };
+
+            // メインデータの読み込み
             int head = bms.IndexOf("MAIN DATA FIELD");
-            int measure = 0;
-            while (head != -1)
+            while (true)
             {
-                int i = 0;
-                while (i < Lanes.Count)
+                // データの検索
+                head = bms.IndexOf("#", head + 1);
+                if (head == -1)
                 {
-                    head = bms.IndexOf("#", head + 1);
-                    if (head == -1)
-                    {
-                        break;
-                    }
-                    int lane = int.Parse(bms.Substring(head + 4, 2));
-                    if (!Lanes.Exists(c => c.channel == lane))
-                    {
-                        continue;
-                    }
-                    if ((int.Parse(bms.Substring(head + 1, 3)) != measure) || (lane != Lanes[i].channel))
-                    {
-                        head--;
-                        i++;
-                        continue;
-                    }
-                    int slice_start = bms.IndexOf(":", head) + 1;
-                    int slice_end = bms.IndexOf("\n", head);
-                    List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
-                    int cnt = data.Count;
-                    for (int j = 0; j < cnt; j++)
-                    {
-                        if (data[j] == 0)
-                        {
-                            continue;
-                        }
-                        long bmscnt = Measure.measureLength * measure + Measure.measureLength * j / cnt;
-                        main_data.obj.Add(new Object { measure = measure, unit_denom = cnt, unit_numer = j, bmscnt = bmscnt, lane = Lanes.Find(c => c.channel == lane).laneNumber, type = data[j] });
-                    }
-                    i += 1;
+                    break;
                 }
-                measure += 1;
+
+                // レーンが対象外の場合は除外
+                int lane = int.Parse(bms.Substring(head + 4, 2));
+                if (!Lanes.Exists(c => c.channel == lane))
+                {
+                    continue;
+                }
+
+                // 小節の読み込み
+                int measure = int.Parse(bms.Substring(head + 1, 3));
+
+                // オブジェクトの読み込み
+                int slice_start = bms.IndexOf(":", head) + 1;
+                int slice_end = bms.IndexOf("\n", head);
+                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
+                int cnt = data.Count;
+                for (int j = 0; j < cnt; j++)
+                {
+                    if (data[j] == 0)
+                    {
+                        continue;
+                    }
+
+                    long bmscnt = Measure.measureLength * measure + Measure.measureLength * j / cnt;
+                    main_data.obj.Add(new BmsObject { measure = measure, unit_denom = cnt, unit_numer = j, bmscnt = bmscnt, lane = Lanes.Find(c => c.channel == lane).laneNumber, type = data[j] });
+                }
             }
+
             return main_data;
         }
 
-        static Object Read_Start(string bms)
+        /// <summary>
+        /// 曲の開始点の読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <returns>曲の開始点</returns>
+        static BmsObject Read_Start(string bms)
         {
-            Object start = new Object() { measure = 0, unit_denom = 0, unit_numer = 0, bmscnt = 0, lane = 0, type = 1 };
+            // 出力変数の初期化
+            BmsObject start = new BmsObject() { measure = 0, unit_denom = 0, unit_numer = 0, bmscnt = 0, lane = 0, type = 1 };
             bool set = false;
+
+            // 曲の開始点の読み込み
             int head = bms.IndexOf("MAIN DATA FIELD");
-            while (head != -1)
+            while (true)
             {
+                // データの検索
                 head = bms.IndexOf("#", head + 1);
                 if (head == -1)
                 {
                     if (!set)
                     {
+                        // 曲の開始点が見つからなかった場合
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Warning: 曲の開始点がありません、0小節目の始まりを曲の開始点とします");
                         Console.ForegroundColor = ConsoleColor.Gray;
                     }
                     break;
                 }
-                if (int.Parse(bms.Substring(head + 4, 2)) != 1)
+
+                // チャンネル番号が異なる場合は除外
+                if (int.Parse(bms.Substring(head + 4, 2)) != StartChannel)
                 {
                     continue;
                 }
+
+                // 曲の開始点の読み込み
                 int measure = int.Parse(bms.Substring(head + 1, 3));
                 int slice_start = head + 7;
                 int slice_end = bms.IndexOf("\n", head);
                 List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
-
                 int cnt = data.Count;
                 for (int i = 0; i < cnt; i++)
                 {
@@ -191,84 +274,116 @@ namespace bms2csv
                     {
                         continue;
                     }
+
                     if (set)
                     {
+                        // 曲の開始点が複数ある場合
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Warning: 曲の開始点が複数あります、最初の開始点のみが有効になります");
                         Console.ForegroundColor = ConsoleColor.Gray;
                         continue;
                     }
+
                     long bmscnt = Measure.measureLength * measure + Measure.measureLength * i / cnt;
-                    start = new Object() { measure = measure, unit_denom = cnt, unit_numer = i, bmscnt = bmscnt, lane = 0, type = 1 };
+                    start = new BmsObject() { measure = measure, unit_denom = cnt, unit_numer = i, bmscnt = bmscnt, lane = 0, type = 1 };
                     set = true;
                 }
             }
 
             return start;
         }
+
+        /// <summary>
+        /// 拍子変更の読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <returns>拍子変更のリスト</returns>
         static List<RhythmChange> Read_RhythmChange(string bms)
         {
+            // 出力変数の初期化
             List<RhythmChange> rhythmChange = new List<RhythmChange>();
+
+            // 拍子変更の読み込み
             int head = bms.IndexOf("MAIN DATA FIELD");
-            while (head != -1)
+            while (true)
             {
+                // データの検索
                 head = bms.IndexOf("#", head + 1);
                 if (head == -1)
                 {
                     break;
                 }
-                int channel = int.Parse(bms.Substring(head + 4, 2));
-                if ((channel == 2))
+
+                // チャンネル番号が異なる場合は除外
+                if (int.Parse(bms.Substring(head + 4, 2)) == ChangeRhythmChannel)
                 {
-                    int measure = int.Parse(bms.Substring(head + 1, 3));
-                    int index = bms.IndexOf(":", head);
-                    int start = index + 1;
-                    int end = bms.IndexOf("\n", index);
-                    double mag = double.Parse(bms.Substring(start, end - start - 1));
-                    rhythmChange.Add(new RhythmChange { measure = measure, mag = mag });
+                    continue;
                 }
+
+                // 拍子変更の読み込み
+                int measure = int.Parse(bms.Substring(head + 1, 3));
+                int index = bms.IndexOf(":", head);
+                int start = index + 1;
+                int end = bms.IndexOf("\n", index);
+                double mag = double.Parse(bms.Substring(start, end - start - 1));
+                rhythmChange.Add(new RhythmChange { measure = measure, mag = mag });
             }
 
             return rhythmChange;
         }
 
+        /// <summary>
+        /// BPM変更の読み込み
+        /// </summary>
+        /// <param name="bms">BMSデータ</param>
+        /// <returns>BPM変更のリスト</returns>
         static List<BpmChange> Read_BpmChange(string bms, List<BpmHeader> bpmHeader)
         {
+            // 出力変数の初期化
             List<BpmChange> bpmChange = new List<BpmChange>();
+
+            // BPM変更の読み込み
             int head = bms.IndexOf("MAIN DATA FIELD");
-            while (head != -1)
+            while (true)
             {
+                // データの検索
                 head = bms.IndexOf("#", head + 1);
                 if (head == -1)
                 {
                     break;
                 }
-                int channel = int.Parse(bms.Substring(head + 4, 2));
-                if ((channel == 3) || (channel == 8))
-                {
-                    int measure = int.Parse(bms.Substring(head + 1, 3));
-                    int index = bms.IndexOf(":", head);
-                    int slice_start = index + 1;
-                    int slice_end = bms.IndexOf("\n", index);
-                    List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
 
-                    int cnt = data.Count;
-                    for (int i = 0; i < cnt; i++)
+                // チャンネル番号が異なる場合は除外
+                int channel = int.Parse(bms.Substring(head + 4, 2));
+                if ((channel != ChangeBPMChannel) && (channel != ChangeBPMExChannel))
+                {
+                    continue;
+                }
+
+                // BPM変更の読み込み
+                int measure = int.Parse(bms.Substring(head + 1, 3));
+                int index = bms.IndexOf(":", head);
+                int slice_start = index + 1;
+                int slice_end = bms.IndexOf("\n", index);
+                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
+                int cnt = data.Count;
+                for (int i = 0; i < cnt; i++)
+                {
+                    if (data[i] == 0)
                     {
-                        if (data[i] == 0)
-                        {
-                            continue;
-                        }
-                        long bmscnt = Measure.measureLength * measure + Measure.measureLength * i / cnt;
-                        switch (channel)
-                        {
-                            case 3:
-                                bpmChange.Add(new BpmChange { measure = measure, unit_denom = cnt, unit_numer = i, bmscnt = bmscnt, bpm = data[i] });
-                                break;
-                            case 8:
-                                bpmChange.Add(new BpmChange { measure = measure, unit_denom = cnt, unit_numer = i, bmscnt = bmscnt, bpm = bpmHeader.Find(c => c.index == data[i]).bpm });
-                                break;
-                        }
+                        continue;
+                    }
+
+                    long bmscnt = Measure.measureLength * measure + Measure.measureLength * i / cnt;
+                    switch (channel)
+                    {
+                        case ChangeBPMChannel:
+                            bpmChange.Add(new BpmChange { measure = measure, unit_denom = cnt, unit_numer = i, bmscnt = bmscnt, bpm = data[i] });
+                            break;
+
+                        case ChangeBPMExChannel:
+                            bpmChange.Add(new BpmChange { measure = measure, unit_denom = cnt, unit_numer = i, bmscnt = bmscnt, bpm = bpmHeader.Find(c => c.index == data[i]).bpm });
+                            break;
                     }
                 }
             }
@@ -276,15 +391,24 @@ namespace bms2csv
             return bpmChange;
         }
 
+        /// <summary>
+        ///  BMSファイルの読み込み
+        /// </summary>
+        /// <param name="filename">ファイルパス</param>
+        /// <returns>譜面データ</returns>
         public static Chart Read_Bms(string filename)
         {
+            // 出力変数の初期化
             Chart chart = new Chart();
+
+            // BMSファイルの読み込み
             string bms;
             using (StreamReader bmsf = new StreamReader(filename, Encoding.GetEncoding("Shift_JIS")))
             {
                 bms = bmsf.ReadToEnd();
             }
 
+            // ヘッダの読み込み
             chart.header = new Header
             {
                 genre = Read_Header(bms, "genre"),
@@ -295,12 +419,13 @@ namespace bms2csv
                 playlevel = Read_Header_Int(bms, "playlevel"),
                 rank = Read_Header_Int(bms, "rank")
             };
-            List<BpmHeader> bpmHeader = Read_Header_Bpm(bms, "bpm", out chart.header.bpm);
+            List<BpmHeader> bpmHeader = Read_Header_Bpm(bms, out chart.header.bpm);
             if (chart.header.bpm == 0)
             {
                 throw new ArgumentException("Error: BPMが不正です");
             }
 
+            // メインデータの読み込み
             chart.main = Read_Main(bms);
             chart.start = Read_Start(bms);
             chart.rhythm = Read_RhythmChange(bms);
