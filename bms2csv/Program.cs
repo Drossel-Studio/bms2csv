@@ -243,6 +243,7 @@ namespace bms2csv
                         Console.ForegroundColor = ConsoleColor.Gray;
                         Console.WriteLine("続行するには何かキーを押してください . . .");
                         Console.ReadKey();
+                        DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, loopMode);
                         return;
                     }
 
@@ -256,6 +257,7 @@ namespace bms2csv
                         string line = Console.ReadLine();
                         if (!line.Equals("Y", StringComparison.OrdinalIgnoreCase))
                         {
+                            DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, loopMode);
                             return;
                         }
                     }
@@ -266,15 +268,8 @@ namespace bms2csv
                     using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag))
                     {
                         while (!process.WaitForExit(1000)) ;
-
-                        // 終了後に一時ファイルを削除
-                        File.Delete(exportCSVPath);
-                        File.Delete(exportHeaderPath);
-                        if (loopMode)
-                        {
-                            File.Delete(wavePath);
-                        }
                     }
+                    DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, loopMode);
                 }
             }
 
@@ -292,6 +287,32 @@ namespace bms2csv
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(string.Format(failureCount.ToString()));
             Console.ForegroundColor = ConsoleColor.Gray;
+        }
+
+        /// <summary>
+        /// 一時ファイルを削除
+        /// </summary>
+        /// <param name="exportCSVPath">出力したCSVのパスを格納する変数</param>
+        /// <param name="exportHeaderPath">出力したヘッダのパスを格納する変数</param>
+        /// <param name="wavePath">再生するWAVEファイルのパスを格納する変数 (ビューアモード用)</param>
+        /// <param name="loopMode">再生をループするか (ビューアモード用)</param>
+        static void DeleteTemporaryFile(string exportCSVPath, string exportHeaderPath, string wavePath, bool loopMode)
+        {
+            if (File.Exists(exportCSVPath))
+            {
+                File.Delete(exportCSVPath);
+            }
+            if (File.Exists(exportHeaderPath))
+            {
+                File.Delete(exportHeaderPath);
+            }
+            if (loopMode)
+            {
+                if (File.Exists(wavePath))
+                { 
+                    File.Delete(wavePath);
+                }
+            }
         }
     }
 }
