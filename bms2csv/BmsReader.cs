@@ -231,8 +231,9 @@ namespace bms2csv
         /// 曲の開始点の読み込み
         /// </summary>
         /// <param name="bms">BMSデータ</param>
+        /// <param name="warning">変換警告の有無を格納する変数</param>
         /// <returns>曲の開始点</returns>
-        static BmsObject Read_Start(string bms)
+        static BmsObject Read_Start(string bms, ref bool warning)
         {
             // 出力変数の初期化
             BmsObject start = new BmsObject() { measure = 0, unit_denom = 0, unit_numer = 0, bmscnt = 0, lane = 0, type = 1 };
@@ -252,6 +253,7 @@ namespace bms2csv
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Warning: 曲の開始点がありません、0小節目の始まりを曲の開始点とします");
                         Console.ForegroundColor = ConsoleColor.Gray;
+                        warning = true;
                     }
                     break;
                 }
@@ -281,6 +283,7 @@ namespace bms2csv
                         Console.ForegroundColor = ConsoleColor.Yellow;
                         Console.WriteLine("Warning: 曲の開始点が複数あります、最初の開始点のみが有効になります");
                         Console.ForegroundColor = ConsoleColor.Gray;
+                        warning = true;
                         continue;
                     }
 
@@ -395,8 +398,9 @@ namespace bms2csv
         ///  BMSファイルの読み込み
         /// </summary>
         /// <param name="filename">ファイルパス</param>
+        /// <param name="warning">変換警告の有無を格納する変数</param>
         /// <returns>譜面データ</returns>
-        public static Chart Read_Bms(string filename)
+        public static Chart Read_Bms(string filename, ref bool warning)
         {
             // 出力変数の初期化
             Chart chart = new Chart();
@@ -427,7 +431,7 @@ namespace bms2csv
 
             // メインデータの読み込み
             chart.main = Read_Main(bms);
-            chart.start = Read_Start(bms);
+            chart.start = Read_Start(bms, ref warning);
             chart.rhythm = Read_RhythmChange(bms);
             chart.bpm = Read_BpmChange(bms, bpmHeader);
 

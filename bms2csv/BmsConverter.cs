@@ -627,15 +627,17 @@ namespace bms2csv
         /// <param name="loop">再生をループするか (ビューアモード用)</param>
         /// <param name="loopDisplayNum">ループ時のノーツ表示回数 (ビューアモード用)</param>
         /// <param name="exportCSVPath">出力したCSVのパスを格納する変数</param>
+        /// <param name="exportHeaderPath">出力したヘッダのパスを格納する変数</param>
         /// <param name="wavePath">再生するWAVEファイルのパスを格納する変数 (ビューアモード用)</param>
         /// <param name="viewerStartTime">再生を開始する実時間を格納する変数 (ビューアモード用)</param>
         /// <param name="viewerEndTime">再生を終了する実時間を格納する変数 (ビューアモード用)</param>
         /// <param name="warning">変換警告の有無を格納する変数</param>
         /// <returns>変換エラーの有無</returns>
-        public static bool Convert_Bms(string bmsFilePath, string outputPath, int startMeasure, int endMeasure, bool loop, int loopDisplayNum, out string exportCSVPath, out string wavePath, out long viewerStartTime, out long viewerEndTime, out bool warning)
+        public static bool Convert_Bms(string bmsFilePath, string outputPath, int startMeasure, int endMeasure, bool loop, int loopDisplayNum, out string exportCSVPath, out string exportHeaderPath, out string wavePath, out long viewerStartTime, out long viewerEndTime, out bool warning)
         {
             // 出力変数の初期化
             exportCSVPath = "";
+            exportHeaderPath = "";
             wavePath = "";
             viewerStartTime = 0;
             viewerEndTime = 0;
@@ -648,10 +650,10 @@ namespace bms2csv
                 string filename;
 
                 // BMSファイルの読み込み
-                Chart chartData = BmsReader.Read_Bms(bmsFilePath);
+                Chart chartData = BmsReader.Read_Bms(bmsFilePath, ref warning);
 
                 // 変換警告のチェック
-                warning = CheckChartWarning(chartData);
+                warning |= CheckChartWarning(chartData);
 
                 // BPM変換リストの作成
                 CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
@@ -733,6 +735,7 @@ namespace bms2csv
                         output.WriteLine($"{json}");
                     }
                 }
+                exportHeaderPath = exportPath;
 
                 // 再生するWAVEファイルのパスを作成 (ビューアモード用)
                 if (!loop)

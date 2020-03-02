@@ -33,6 +33,7 @@ namespace bms2csv
             bool viewerMode = false;
             bool loopMode = false;
             string exportCSVPath;
+            string exportHeaderPath;
             string wavePath;
             long viewerStartTime;
             long viewerEndTime;
@@ -193,7 +194,7 @@ namespace bms2csv
                 Console.WriteLine(string.Format("Convert: {0}", f));
 
                 // 変換
-                if (success = BmsConverter.Convert_Bms(f, OUTPUT, MEASURE, (MEASURE + LOOP_MEASURE), loopMode, LOOP_DISPLAY_NUM, out exportCSVPath, out wavePath, out viewerStartTime, out viewerEndTime, out warning))
+                if (success = BmsConverter.Convert_Bms(f, OUTPUT, MEASURE, (MEASURE + LOOP_MEASURE), loopMode, LOOP_DISPLAY_NUM, out exportCSVPath, out exportHeaderPath, out wavePath, out viewerStartTime, out viewerEndTime, out warning))
                 {
                     successCount++;
                 }
@@ -262,7 +263,18 @@ namespace bms2csv
                     // ビューアの起動
                     string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UGUISU.exe");
                     string loopFlag = loopMode ? "1" : "0";
-                    Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag);
+                    using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag))
+                    {
+                        while (!process.WaitForExit(1000)) ;
+
+                        // 終了後に一時ファイルを削除
+                        File.Delete(exportCSVPath);
+                        File.Delete(exportHeaderPath);
+                        if (loopMode)
+                        {
+                            File.Delete(wavePath);
+                        }
+                    }
                 }
             }
 
