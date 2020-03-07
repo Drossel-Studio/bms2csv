@@ -28,6 +28,9 @@ namespace bms2csv
             int LOOP_MEASURE = 0;
             int SPEED = 1;
             int LOOP_DISPLAY_NUM = 1;
+            int PAUSE_BEFORE_LOOP = 0;
+            double MUSIC_SPEED = 1.0;
+            int CORRECT_PITCH = 1;
 
             // 内部処理用
             bool viewerMode = false;
@@ -144,6 +147,27 @@ namespace bms2csv
                 if (size > 0)
                 {
                     LOOP_DISPLAY_NUM = int.Parse(returnedString.ToString());
+                }
+
+                // ループ間でポーズするかの読み込み
+                size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "PauseBeforeLoop", "0", returnedString, BufferSize, iniPath);
+                if (size > 0)
+                {
+                    PAUSE_BEFORE_LOOP = int.Parse(returnedString.ToString());
+                }
+
+                // 再生速度の読み込み
+                size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "MusicSpeed", "1.0", returnedString, BufferSize, iniPath);
+                if (size > 0)
+                {
+                    MUSIC_SPEED = double.Parse(returnedString.ToString());
+                }
+
+                // ピッチ補正するかの読み込み
+                size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "CorrectPitch", "1", returnedString, BufferSize, iniPath);
+                if (size > 0)
+                {
+                    CORRECT_PITCH = int.Parse(returnedString.ToString());
                 }
             }
 
@@ -265,7 +289,7 @@ namespace bms2csv
                     // ビューアの起動
                     string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UGUISU.exe");
                     string loopFlag = loopMode ? "1" : "0";
-                    using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag))
+                    using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag + " " + PAUSE_BEFORE_LOOP + " " + MUSIC_SPEED.ToString() + " " + CORRECT_PITCH))
                     {
                         while (!process.WaitForExit(1000)) ;
                     }
