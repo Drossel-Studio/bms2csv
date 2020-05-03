@@ -12,14 +12,16 @@ bms2csv.exe [path] [outputpath]
 
 ## ビューアモード
 ```
-bms2csv.exe -V -P -N[measure] [filepath]	…　通常再生
-bms2csv.exe -V -R -N[measure] [filepath]	…　小節単位のリピート再生
-bms2csv.exe -V -S				…　何もせずに終了
+bms2csv.exe -V -P -N[measure] [filepath] [exename]	…　通常再生
+bms2csv.exe -V -R -N[measure] [filepath]  [exename]	…　小節単位のリピート再生
+bms2csv.exe -V -S					…　何もせずに終了
 ```
 - **measure**
   - 再生を開始する小節
 - **filepath**
   - BMSファイルのパス
+- **exename**
+  - 起動するEXEファイル名（bms2csv.exeからの相対パス）
 
 ### Config.ini
 1. 「Speed=」の右にハイスピの値を入力
