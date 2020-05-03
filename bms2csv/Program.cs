@@ -24,6 +24,7 @@ namespace bms2csv
             // 入力データ
             string PATH = ".";
             string OUTPUT = "";
+            string EXENAME = "UGUISU.exe";
             int MEASURE = 0;
             int LOOP_MEASURE = 0;
             int SPEED = 1;
@@ -111,6 +112,14 @@ namespace bms2csv
                 {
                     PATH = args[3];
                     OUTPUT = Path.GetDirectoryName(PATH);
+                }
+            }
+            if (args.Length > 4)
+            {
+                // ビューアモード: 使用するEXEファイル名
+                if (viewerMode)
+                {
+                    EXENAME = args[4];
                 }
             }
 
@@ -287,7 +296,7 @@ namespace bms2csv
                     }
 
                     // ビューアの起動
-                    string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "UGUISU.exe");
+                    string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, EXENAME);
                     string loopFlag = loopMode ? "1" : "0";
                     using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag + " " + PAUSE_BEFORE_LOOP + " " + MUSIC_SPEED.ToString() + " " + CORRECT_PITCH))
                     {
