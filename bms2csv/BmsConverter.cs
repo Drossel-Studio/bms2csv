@@ -55,9 +55,15 @@ namespace bms2csv
             SlideChildNote1 = 0x05,
             SlideParentNote2 = 0x06,
             SlideChildNote2 = 0x07,
+            PairNote = 0x08,
             FlickUpNote = 0x10,
             FlickDownNote = 0x11,
-            SpecialNote = 0x20
+            FlickNote = 0x12,
+            SpecialNote = 0x20,
+            SpecialFlickRightNote = 0x21,
+            SpecialFlickUpperRightNote = 0x22,
+            SpecialFlickLowerRightNote = 0x23,
+            RainbowNote = 0x24
         }
 
         private enum NoteErrorFlag
@@ -67,7 +73,9 @@ namespace bms2csv
             InvalidType = 0b10,
             NoLongPair = 0b100,
             NoSlidePair = 0b1000,
-            NoSlideParent = 0b10000
+            NoSlideParent = 0b10000,
+            NoPairPair = 0b100000,
+            NoRainbowPair = 0b1000000
         }
 
         /// <summary>
@@ -275,6 +283,110 @@ namespace bms2csv
                         //ペアなしフラグを立てる
                         errorFlag[i] |= NoteErrorFlag.NoSlideParent;
                         break;
+
+                    //ペアノーツ
+                    case NoteType.PairNote:
+                        //登録済みかを検索
+                        reg = false;
+                        foreach (ObjectPair p in pair)
+                        {
+                            if (p.endID == i)
+                            {
+                                reg = true;
+                                break;
+                            }
+                        }
+                        if (reg)
+                        {
+                            continue;
+                        }
+
+                        //ペアリストを作成
+                        pair.Add(new ObjectPair { type = obj[i].type, ID = i, startID = i, endID = -1, nextID = -1 });
+
+                        for (int j = i + 1; j < obj.Count; j++)
+                        {
+                            //ペアとなるペアノーツを検索
+
+                            //対象でなければ除外
+                            //時間が異なる
+                            if (obj[i].bmscnt != obj[j].bmscnt)
+                            {
+                                continue;
+                            }
+                            //種類が異なる
+                            if ((NoteType)obj[j].type != NoteType.PairNote)
+                            {
+                                continue;
+                            }
+
+                            //ペアとして登録
+                            pair[pairNum].endID = j;
+                            pair[pairNum].nextID = j;
+                            break;
+                        }
+
+                        //ペアなしフラグを立てる
+                        if (pair[pairNum].endID == -1)
+                        {
+                            errorFlag[pair[pairNum].ID] |= NoteErrorFlag.NoPairPair;
+                        }
+
+                        //登録完了
+                        pairNum++;
+                        break;
+
+                    //レインボーノーツ
+                    case NoteType.RainbowNote:
+                        //登録済みかを検索
+                        reg = false;
+                        foreach (ObjectPair p in pair)
+                        {
+                            if (p.endID == i)
+                            {
+                                reg = true;
+                                break;
+                            }
+                        }
+                        if (reg)
+                        {
+                            continue;
+                        }
+
+                        //ペアリストを作成
+                        pair.Add(new ObjectPair { type = obj[i].type, ID = i, startID = i, endID = -1, nextID = -1 });
+
+                        for (int j = i + 1; j < obj.Count; j++)
+                        {
+                            //ペアとなるレインボーノーツを検索
+
+                            //対象でなければ除外
+                            //レーンが異なる
+                            if (obj[i].lane != obj[j].lane)
+                            {
+                                continue;
+                            }
+                            //種類が異なる
+                            if ((NoteType)obj[j].type != NoteType.RainbowNote)
+                            {
+                                continue;
+                            }
+
+                            //ペアとして登録
+                            pair[pairNum].endID = j;
+                            pair[pairNum].nextID = j;
+                            break;
+                        }
+
+                        //ペアなしフラグを立てる
+                        if (pair[pairNum].endID == -1)
+                        {
+                            errorFlag[pair[pairNum].ID] |= NoteErrorFlag.NoRainbowPair;
+                        }
+
+                        //登録完了
+                        pairNum++;
+                        break;
                 }
             }
 
@@ -356,6 +468,18 @@ namespace bms2csv
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("スライド親ノーツのないスライド子ノーツがあります");
+                    result = true;
+                }
+                if ((errorFlag[i] & NoteErrorFlag.NoPairPair) != 0)
+                {
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("ペアになっていないペアノーツがあります");
+                    result = true;
+                }
+                if ((errorFlag[i] & NoteErrorFlag.NoRainbowPair) != 0)
+                {
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("ペアになっていないレインボーノーツがあります");
                     result = true;
                 }
             }
