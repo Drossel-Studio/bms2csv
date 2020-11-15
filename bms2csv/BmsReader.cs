@@ -120,20 +120,17 @@ namespace bms2csv
         static string Read_Header(string bms, string key)
         {
             // キーの検索
-            int head = bms.IndexOf(key);
+            int head = bms.IndexOf($"#{key}", StringComparison.OrdinalIgnoreCase);
             if (head == -1)
             {
-                head = bms.IndexOf(key.ToUpper());
-            }
-            if (head == -1)
-            {
-                return "";
+                return string.Empty;
             }
 
             // データの読み込み
             int start = head + key.Length + 1;
-            int end = bms.IndexOf("\n", head);
-            return bms.Substring(start, end - start - 1);
+            int end = bms.IndexOf(Environment.NewLine, head);
+            var result = bms.Substring(start, end - start).Trim();
+            return result;
         }
 
         /// <summary>
