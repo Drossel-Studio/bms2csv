@@ -5,11 +5,12 @@
     <TargetFramework>net5.0</TargetFramework>
     <StartupObject>bms2csv.Program</StartupObject>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
-    <Authors />
+    <Authors>Drossel/Studio</Authors>
     <Company>Drossel/Studio</Company>
     <Description>BMSをCSVに変換するすごいやつ</Description>
-    <Copyright>Copyright c Drossel/Studio 2020.</Copyright>
+    <Copyright>Copyright c Drossel/Studio 2021.</Copyright>
     <NeutralLanguage>ja-JP</NeutralLanguage>
+    <Version>1.2.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
