@@ -213,6 +213,9 @@ namespace bms2csv
                 files = new string[] { PATH };
             }
 
+            // Shift-JISを利用するためのセットアップ
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
             // ファイルの変換
             foreach (string f in files)
             {

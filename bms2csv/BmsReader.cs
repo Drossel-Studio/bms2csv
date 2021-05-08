@@ -103,8 +103,8 @@ namespace bms2csv
                 {
                     // 拡張BPM変更
                     int start = head + key.Length + 1;
-                    int end = bms.IndexOf("\n", head);
-                    initialBpm = double.Parse(bms.Substring(start, end - start - 1));
+                    int end = bms.IndexOf(Environment.NewLine, head);
+                    initialBpm = double.Parse(bms.Substring(start, end - start));
                 }
             }
 
@@ -206,8 +206,8 @@ namespace bms2csv
 
                 // オブジェクトの読み込み
                 int slice_start = bms.IndexOf(":", head) + 1;
-                int slice_end = bms.IndexOf("\n", head);
-                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
+                int slice_end = bms.IndexOf(Environment.NewLine, head);
+                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start), 16);
                 int cnt = data.Count;
                 for (int j = 0; j < cnt; j++)
                 {
@@ -264,8 +264,8 @@ namespace bms2csv
                 // 曲の開始点の読み込み
                 int measure = int.Parse(bms.Substring(head + 1, 3));
                 int slice_start = head + 7;
-                int slice_end = bms.IndexOf("\n", head);
-                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
+                int slice_end = bms.IndexOf(Environment.NewLine, head);
+                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start), 16);
                 int cnt = data.Count;
                 for (int i = 0; i < cnt; i++)
                 {
