@@ -24,7 +24,7 @@ namespace bms2csv
             // 入力データ
             string PATH = ".";
             string OUTPUT = "";
-            string EXENAME = "UGUISU.exe";
+            string EXENAME = "Miyabi.exe";
             int MEASURE = 0;
             int LOOP_MEASURE = 0;
             int SPEED = 1;
