@@ -32,6 +32,8 @@ namespace bms2csv
             int PAUSE_BEFORE_LOOP = 0;
             double MUSIC_SPEED = 1.0;
             int CORRECT_PITCH = 1;
+            int BGM_VOLUME = 100;
+            int SE_VOLUME = 100;
 
             // 内部処理用
             bool viewerMode = false;
@@ -178,6 +180,20 @@ namespace bms2csv
                 {
                     CORRECT_PITCH = int.Parse(returnedString.ToString());
                 }
+
+                // BGM音量の読み込み
+                size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "BGMVolume", "100", returnedString, BufferSize, iniPath);
+                if (size > 0)
+                {
+                    BGM_VOLUME = int.Parse(returnedString.ToString());
+                }
+
+                // SE音量の読み込み
+                size = UnsafeNativeMethods.GetPrivateProfileString("CONFIG", "SEVolume", "100", returnedString, BufferSize, iniPath);
+                if (size > 0)
+                {
+                    SE_VOLUME = int.Parse(returnedString.ToString());
+                }
             }
 
             // 入力パスの存在確認
@@ -301,7 +317,7 @@ namespace bms2csv
                     // ビューアの起動
                     string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, EXENAME);
                     string loopFlag = loopMode ? "1" : "0";
-                    using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag + " " + PAUSE_BEFORE_LOOP + " " + MUSIC_SPEED.ToString() + " " + CORRECT_PITCH))
+                    using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag + " " + PAUSE_BEFORE_LOOP + " " + MUSIC_SPEED.ToString() + " " + CORRECT_PITCH + " " + BGM_VOLUME + " " + SE_VOLUME))
                     {
                         while (!process.WaitForExit(1000)) ;
                     }
