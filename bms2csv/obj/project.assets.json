@@ -98,23 +98,19 @@
     ]
   },
   "packageFolders": {
-    "C:\\Users\\yuki1\\.nuget\\packages\\": {},
-    "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder": {}
+    "C:\\Users\\TT\\.nuget\\packages\\": {}
   },
   "project": {
     "version": "1.2.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\yuki1\\bms2csv\\bms2csv\\bms2csv.csproj",
+      "projectUniqueName": "C:\\Users\\TT\\Documents\\GitHub\\bms2csv\\bms2csv\\bms2csv.csproj",
       "projectName": "bms2csv",
-      "projectPath": "C:\\Users\\yuki1\\bms2csv\\bms2csv\\bms2csv.csproj",
-      "packagesPath": "C:\\Users\\yuki1\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\yuki1\\bms2csv\\bms2csv\\obj\\",
+      "projectPath": "C:\\Users\\TT\\Documents\\GitHub\\bms2csv\\bms2csv\\bms2csv.csproj",
+      "packagesPath": "C:\\Users\\TT\\.nuget\\packages\\",
+      "outputPath": "C:\\Users\\TT\\Documents\\GitHub\\bms2csv\\bms2csv\\obj\\",
       "projectStyle": "PackageReference",
-      "fallbackFolders": [
-        "C:\\Program Files\\dotnet\\sdk\\NuGetFallbackFolder"
-      ],
       "configFilePaths": [
-        "C:\\Users\\yuki1\\AppData\\Roaming\\NuGet\\NuGet.Config",
+        "C:\\Users\\TT\\AppData\\Roaming\\NuGet\\NuGet.Config",
         "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
       ],
       "originalTargetFrameworks": [
@@ -160,7 +156,7 @@
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.104\\RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\5.0.203\\RuntimeIdentifierGraph.json"
       }
     }
   }
