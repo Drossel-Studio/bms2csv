@@ -63,7 +63,8 @@ namespace bms2csv
             SpecialFlickRightNote = 0x21,
             SpecialFlickUpperRightNote = 0x22,
             SpecialFlickLowerRightNote = 0x23,
-            RainbowNote = 0x24
+            RainbowNote = 0x24,
+            BPMChange = 0xA0
         }
 
         private enum NoteErrorFlag
@@ -493,13 +494,10 @@ namespace bms2csv
         /// </summary>
         /// <param name="chartData">譜面データ</param>
         /// <returns>ノーツリスト</returns>
-        private static List<Note> CalcAllNotes(Chart chartData, List<BpmChangeTiming> checkPoint)
+        private static List<Note> CalcAllNotes(Chart chartData, List<BpmChangeTiming> checkPoint, long start)
         {
-            // 曲の開始点の変換
-            Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
-
             // 全ノーツの変換
-            return ConvertBmsCountToRealCount(chartData.main, checkPoint, startNote.Time);
+            return ConvertBmsCountToRealCount(chartData.main, checkPoint, start);
         }
 
         /// <summary>
@@ -787,8 +785,11 @@ namespace bms2csv
                     Console.WriteLine("({0}, {1}, {2})", c.bmsCount, c.bpm, c.realTimeCount);
                 }
 
+                //開始ノーツの時間を取得
+                Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
+
                 // ノーツへの変換
-                List<Note> allNotes = CalcAllNotes(chartData, checkPoint);
+                List<Note> allNotes = CalcAllNotes(chartData, checkPoint, startNote.Time);
 
                 // 再生を開始する実時間の取得 (ビューアモード用)
                 viewerStartTime = GetMeasureStartTime(chartData, checkPoint, startMeasure);
@@ -834,6 +835,10 @@ namespace bms2csv
                     foreach (Note note in allNotes)
                     {
                         output.WriteLine("{0},{1},{2}", note.Time, note.Lane, note.Type);
+                    }
+                    foreach (BpmChangeTiming bpm in checkPoint)
+                    {
+                        output.WriteLine("{0},{1},{2}", bpm.realTimeCount - startNote.Time, bpm.bpm * Measure.measureLength, (int)NoteType.BPMChange);
                     }
                 }
                 exportCSVPath = exportPath;
