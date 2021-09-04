@@ -364,8 +364,8 @@ namespace bms2csv
                 int measure = int.Parse(bms.Substring(head + 1, 3));
                 int index = bms.IndexOf(":", head);
                 int slice_start = index + 1;
-                int slice_end = bms.IndexOf("\n", index);
-                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start - 1), 16);
+                int slice_end = bms.IndexOf(Environment.NewLine, index);
+                List<int> data = Slice_Two(bms.Substring(slice_start, slice_end - slice_start), 16);
                 int cnt = data.Count;
                 for (int i = 0; i < cnt; i++)
                 {

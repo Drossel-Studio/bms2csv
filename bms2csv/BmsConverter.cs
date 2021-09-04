@@ -889,6 +889,7 @@ namespace bms2csv
                 // 変換エラー発生時
                 Console.ForegroundColor = ConsoleColor.Red;
                 Console.WriteLine(e.Message);
+                Console.WriteLine(e.StackTrace);
                 Console.ForegroundColor = ConsoleColor.Gray;
 
                 return false;
