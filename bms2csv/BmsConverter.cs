@@ -64,7 +64,8 @@ namespace bms2csv
             SpecialFlickUpperRightNote = 0x22,
             SpecialFlickLowerRightNote = 0x23,
             RainbowNote = 0x24,
-            BPMChange = 0xA0
+            BPMChange = 0xA0,
+            StartNoteFromMeasureLine = 0xA1
         }
 
         private enum NoteErrorFlag
@@ -712,6 +713,46 @@ namespace bms2csv
             return (long)((double)(bmsCount - nearestCheckPoint.bmsCount) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
         }
 
+        /// <summary>
+        /// オブジェクトからノーツへの変換
+        /// </summary>
+        /// <param name="srcData">オブジェクト</param>
+        /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
+        /// <param name="start">曲の開始点 [ms]</param>
+        /// <returns>ノーツ</returns>
+        private static Note GetRealCountFromMeasureLineMainData(BmsObject srcData, List<BpmChangeTiming> checkpoint, long start)
+        {
+            long bmsCount = srcData.bmscnt;
+            long realTimeCount = GetRealCountMeasureLine(bmsCount, checkpoint, start);
+            return new Note { Time = realTimeCount, Lane = srcData.lane, Type = srcData.type };
+        }
+
+        /// <summary>
+        /// BMSカウントから実時間への変換
+        /// </summary>
+        /// <param name="bmsCount">BMSカウント</param>
+        /// <param name="checkpoint">BMSカウントと実時間の対応表</param>
+        /// <param name="start">曲の開始点 [ms]</param>
+        /// <returns>実時間 [ms]</returns>
+        private static long GetRealCountMeasureLine(long bmsCount, List<BpmChangeTiming> checkpoint, long start)
+        {
+            // 直前のBMSカウントと実時間の対応を取得
+            BpmChangeTiming nearestCheckPoint = checkpoint[0];
+            foreach (BpmChangeTiming c in checkpoint)
+            {
+                if (c.bmsCount < bmsCount)
+                {
+                    nearestCheckPoint = c;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return (long)((double)((bmsCount - nearestCheckPoint.bmsCount) % Measure.measureLength) / Measure.measureLength * 60 / nearestCheckPoint.bpm * 4 * 1000 + nearestCheckPoint.realTimeCount - start);
+        }
+
         private static List<Note> ConvertNoteListForLoop(List<Note> notes, long loopStartTime, long loopEndTime, int loopDisplayNum)
         {
             // 出力変数の初期化
@@ -787,6 +828,7 @@ namespace bms2csv
 
                 //開始ノーツの時間を取得
                 Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
+                Note startNoteFromMeasureLine = GetRealCountFromMeasureLineMainData(chartData.start, checkPoint, 0L);
 
                 // ノーツへの変換
                 List<Note> allNotes = CalcAllNotes(chartData, checkPoint, startNote.Time);
@@ -840,6 +882,7 @@ namespace bms2csv
                     {
                         output.WriteLine("{0},{1},{2}", bpm.realTimeCount - startNote.Time, bpm.bpm * Measure.measureLength, (int)NoteType.BPMChange);
                     }
+                    output.WriteLine("{0},{1},{2}", 0, startNoteFromMeasureLine.Time, (int)NoteType.StartNoteFromMeasureLine);
                 }
                 exportCSVPath = exportPath;
 
