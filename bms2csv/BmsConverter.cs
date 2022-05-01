@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.IO;
 using System.Runtime.Serialization.Json;
 using System.Text;
@@ -76,7 +77,9 @@ namespace bms2csv
             NoSlidePair = 0b1000,
             NoSlideParent = 0b10000,
             NoPairPair = 0b100000,
-            NoRainbowPair = 0b1000000
+            NoRainbowPair = 0b1000000,
+            OverNoteLimit = 0b10000000,
+            OverLineLengthLimit = 0b100000000
         }
 
         /// <summary>
@@ -94,6 +97,16 @@ namespace bms2csv
         };
 
         /// <summary>
+        /// 同時に配置できるノーツ数
+        /// </summary>
+        const int MAX_SIMUL_NOTE = 3;
+
+        /// <summary>
+        /// 線の最大長さ (ms)
+        /// </summary>
+        const long MAX_LINE_LENGTH = 12000;
+
+        /// <summary>
         /// レーンの名称
         /// </summary>
         readonly private static List<LaneName> LaneNames = new List<LaneName>()
@@ -105,15 +118,16 @@ namespace bms2csv
             new LaneName{lane = 5, name = "L"},
             new LaneName{lane = 6, name = "R"},
             new LaneName{lane = 7, name = "SP"}
-            };
+        };
 
         /// <summary>
         /// オブジェクトペアリストの作成
         /// </summary>
         /// <param name="obj">オブジェクトの配列</param>
+        /// <param name="checkPoint">BMSカウントと実時間の対応表</param>
         /// <param name="errorFlag">エラーフラグを出力する配列</param>
         /// <returns>オブジェクトペアリスト</returns>
-        private static List<ObjectPair> CreatePairList(List<BmsObject> obj, ref NoteErrorFlag[] errorFlag)
+        private static List<ObjectPair> CreatePairList(List<BmsObject> obj, List<BpmChangeTiming> checkPoint, ref NoteErrorFlag[] errorFlag)
         {
             int pairNum;            //登録したペアリストの数
             int firstPair;          //スライド親ノーツのペアリストインデックス（スライドノーツ登録中に使用）
@@ -179,6 +193,15 @@ namespace bms2csv
                         if (pair[pairNum].endID == -1)
                         {
                             errorFlag[pair[pairNum].ID] |= NoteErrorFlag.NoLongPair;
+                        }
+                        else
+                        {
+                            //線の長さを計算し、長い場合は警告を出す
+                            if ((GetRealCount(obj[pair[pairNum].nextID].bmscnt, checkPoint, 0) - GetRealCount(obj[pair[pairNum].ID].bmscnt, checkPoint, 0)) > MAX_LINE_LENGTH)
+                            {
+                                errorFlag[pair[pairNum].ID] |= NoteErrorFlag.OverLineLengthLimit;
+                                errorFlag[pair[pairNum].nextID] |= NoteErrorFlag.OverLineLengthLimit;
+                            }
                         }
 
                         //登録完了
@@ -250,12 +273,22 @@ namespace bms2csv
                             }
                         }
 
-                        //ペアなしフラグを立てる
+                        //ペアのチェック
                         for (int k = firstPair; k <= pairNum; k++)
                         {
+                            //ペアなしフラグを立てる
                             if (pair[k].endID == -1)
                             {
                                 errorFlag[pair[k].ID] |= NoteErrorFlag.NoSlidePair;
+                            }
+                            else
+                            {
+                                //線の長さを計算し、長い場合は警告を出す
+                                if ((GetRealCount(obj[pair[k].nextID].bmscnt, checkPoint, 0) - GetRealCount(obj[pair[k].ID].bmscnt, checkPoint, 0)) > MAX_LINE_LENGTH)
+                                {
+                                    errorFlag[pair[k].ID] |= NoteErrorFlag.OverLineLengthLimit;
+                                    errorFlag[pair[k].nextID] |= NoteErrorFlag.OverLineLengthLimit;
+                                }
                             }
                         }
 
@@ -398,8 +431,9 @@ namespace bms2csv
         /// 譜面の変換警告チェック
         /// </summary>
         /// <param name="chartData">譜面データ</param>
+        /// <param name="checkPoint">BMSカウントと実時間の対応表</param>
         /// <returns>変換警告の有無</returns>
-        private static bool CheckChartWarning(Chart chartData)
+        private static bool CheckChartWarning(Chart chartData, List<BpmChangeTiming> checkPoint)
         {
             // 出力変数の初期化
             bool result = false;
@@ -427,10 +461,16 @@ namespace bms2csv
                 {
                     errorFlag[i] |= NoteErrorFlag.InvalidType;
                 }
+
+                // 同じ時間に制限数以上のノーツがある
+                if (chartData.main.obj.Count(obj => obj.bmscnt == chartData.main.obj[i].bmscnt) >= MAX_SIMUL_NOTE)
+                {
+                    errorFlag[i] |= NoteErrorFlag.OverNoteLimit;
+                }
             }
 
             // オブジェクトペアの確認
-            CreatePairList(chartData.main.obj, ref errorFlag);
+            CreatePairList(chartData.main.obj, checkPoint, ref errorFlag);
 
             for (int i = 0; i < cnt; i++)
             {
@@ -481,6 +521,18 @@ namespace bms2csv
                 {
                     Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
                     Console.WriteLine("ペアになっていないレインボーノーツがあります");
+                    result = true;
+                }
+                if ((errorFlag[i] & NoteErrorFlag.OverNoteLimit) != 0)
+                {
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("同時に配置できるノーツを超過しています");
+                    result = true;
+                }
+                if ((errorFlag[i] & NoteErrorFlag.OverLineLengthLimit) != 0)
+                {
+                    Console.Write("Warning: {0}Measure {1}/{2} {3}レーン ", chartData.main.obj[i].measure, chartData.main.obj[i].unit_numer, chartData.main.obj[i].unit_denom, LaneNames.Find(c => c.lane == chartData.main.obj[i].lane).name);
+                    Console.WriteLine("正常に処理できる線の長さを超過しています");
                     result = true;
                 }
             }
@@ -774,9 +826,6 @@ namespace bms2csv
                 // BMSファイルの読み込み
                 Chart chartData = BmsReader.Read_Bms(bmsFilePath, ref warning);
 
-                // 変換警告のチェック
-                warning |= CheckChartWarning(chartData);
-
                 // BPM変換リストの作成
                 CreateRhythmChange(chartData.rhythm, chartData.header.bpm, ref chartData.bpm);
                 List<BpmChangeTiming> checkPoint = CalcBpmChangeTiming(chartData.header.bpm, chartData.bpm);
@@ -784,6 +833,9 @@ namespace bms2csv
                 {
                     Console.WriteLine("({0}, {1}, {2})", c.bmsCount, c.bpm, c.realTimeCount);
                 }
+
+                // 変換警告のチェック
+                warning |= CheckChartWarning(chartData, checkPoint);
 
                 //開始ノーツの時間を取得
                 Note startNote = GetRealCountMainData(chartData.start, checkPoint, 0L);
