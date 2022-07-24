@@ -65,7 +65,8 @@ namespace bms2csv
             SpecialFlickUpperRightNote = 0x22,
             SpecialFlickLowerRightNote = 0x23,
             RainbowNote = 0x24,
-            BPMChange = 0xA0
+            BPMChange = 0xA0,
+            StartNoteFromMeasureLine = 0xA1
         }
 
         private enum NoteErrorFlag
@@ -892,6 +893,7 @@ namespace bms2csv
                     {
                         output.WriteLine("{0},{1},{2}", bpm.realTimeCount - startNote.Time, bpm.bpm * Measure.measureLength, (int)NoteType.BPMChange);
                     }
+                    output.WriteLine("{0},{1},{2}", 0, startNote.Time, (int)NoteType.StartNoteFromMeasureLine);
                 }
                 exportCSVPath = exportPath;
 
