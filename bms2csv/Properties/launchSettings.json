@@ -1,8 +1,7 @@
 {
   "profiles": {
     "bms2csv": {
-      "commandName": "Project",
-      "commandLineArgs": "\"C:\\Users\\yuki1\\Dev\\Miyabi\\Assets\\Songs\\conflict\\conflict_h.bms\" \"C:\\Users\\yuki1\\Dev\\Miyabi\\Assets\\Songs\\conflict\\conflict_h.bms\""
+      "commandName": "Project"
     }
   }
 }
