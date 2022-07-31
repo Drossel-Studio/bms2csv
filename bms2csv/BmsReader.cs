@@ -95,8 +95,8 @@ namespace bms2csv
                     // 初期BPM
                     int index = int.Parse(bms.Substring(head + key.Length + 1, 2), NumberStyles.AllowHexSpecifier);
                     int start = head + key.Length + 3;
-                    int end = bms.IndexOf("\n", head);
-                    double bpm = double.Parse(bms.Substring(start, end - start - 1));
+                    int end = bms.IndexOf("\r\n", head);
+                    double bpm = double.Parse(bms.Substring(start, end - start));
                     bpmHeader.Add(new BpmHeader { index = index, bpm = bpm });
                 }
                 else
