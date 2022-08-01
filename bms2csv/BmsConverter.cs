@@ -893,7 +893,8 @@ namespace bms2csv
                     {
                         output.WriteLine("{0},{1},{2}", bpm.realTimeCount - startNote.Time, bpm.bpm * Measure.measureLength, (int)NoteType.BPMChange);
                     }
-                    output.WriteLine("{0},{1},{2}", 0, startNote.Time, (int)NoteType.StartNoteFromMeasureLine);
+                    long measure = GetRealCount(Measure.measureLength, checkPoint, 0);
+                    output.WriteLine("{0},{1},{2}", 0, startNote.Time % measure, (int)NoteType.StartNoteFromMeasureLine);
                 }
                 exportCSVPath = exportPath;
 
