@@ -2,7 +2,7 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
+    <TargetFramework>net6.0</TargetFramework>
     <StartupObject>bms2csv.Program</StartupObject>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <Authors>Drossel/Studio</Authors>
@@ -11,6 +11,7 @@
     <Copyright>Copyright c Drossel/Studio 2021.</Copyright>
     <NeutralLanguage>ja-JP</NeutralLanguage>
     <Version>1.2.0</Version>
+    <ReleaseVersion>1.0</ReleaseVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
