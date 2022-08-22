@@ -29,3 +29,11 @@ jobs:
     
     - name: Test
       run: dotnet test -c Release --no-build --verbosity normal --filter "Category!=LongRunning"
+
+    - name: Archive production artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: bms2csv
+        path: |
+          bms2csv/bin/Release/net6.0
+          
