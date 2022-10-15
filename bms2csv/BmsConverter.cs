@@ -674,6 +674,31 @@ namespace bms2csv
                     change.bpm /= rhythmChange[rhythmIndex].mag;
                 }
             }
+
+            int maxmeasure = 0;
+            foreach (RhythmChange rchange in rhythmChange)
+            {
+                if (rchange.measure > maxmeasure)
+                {
+                    maxmeasure = rchange.measure;
+                }
+            }
+
+            // BPM変更がない小節での拍子変更
+            for (measure++; measure <= maxmeasure; measure++)
+            {
+                rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
+                if (rhythmIndex != -1)
+                {
+                    rhythmChanged = true;
+
+                    // 拍子変更に対応するBPM変更の作成
+                    bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
+
+                    // 次小節の最初でBPM変更がない場合は打ち消し用BPM変更の新規作成
+                    bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
+                }
+            }
         }
 
         /// <summary>
