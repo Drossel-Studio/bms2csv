@@ -28,6 +28,7 @@ namespace bms2csv
         /// </summary>
         static readonly private List<Lane> Lanes = new List<Lane>()
         {
+            new Lane{channel = 1, laneNumber = 0 },
             new Lane{channel = 11, laneNumber = 5 },
             new Lane{channel = 12, laneNumber = 1 },
             new Lane{channel = 13, laneNumber = 2 },
@@ -211,7 +212,7 @@ namespace bms2csv
                 int cnt = data.Count;
                 for (int j = 0; j < cnt; j++)
                 {
-                    if (data[j] == 0)
+                    if ((data[j] == 0) || (data[j] == 1))
                     {
                         continue;
                     }
@@ -324,8 +325,8 @@ namespace bms2csv
                 int measure = int.Parse(bms.Substring(head + 1, 3));
                 int index = bms.IndexOf(":", head);
                 int start = index + 1;
-                int end = bms.IndexOf("\n", index);
-                double mag = double.Parse(bms.Substring(start, end - start - 1));
+                int end = bms.IndexOf(Environment.NewLine, index);
+                double mag = double.Parse(bms.Substring(start, end - start));
                 rhythmChange.Add(new RhythmChange { measure = measure, mag = mag });
             }
 

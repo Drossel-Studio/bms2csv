@@ -66,7 +66,13 @@ namespace bms2csv
             SpecialFlickLowerRightNote = 0x23,
             RainbowNote = 0x24,
             BPMChange = 0xA0,
-            StartNoteFromMeasureLine = 0xA1
+            StartNoteFromMeasureLine = 0xA1,
+            AutoPlayOn = 0xB0,
+            AutoPlayOff = 0xB1,
+            GaugeLockOn = 0xB2,
+            GaugeLockOff = 0xB3,
+            TouchGuardOn = 0xB4,
+            TouchGuardOff = 0xB5
         }
 
         private enum NoteErrorFlag
@@ -88,6 +94,7 @@ namespace bms2csv
         /// </summary>
         readonly private static List<NoteTypeRange> NoteTypeRanges = new List<NoteTypeRange>()
         {
+            new NoteTypeRange {lane = 0, from = 0xB0, to = 0xBF},
             new NoteTypeRange {lane = 1, from = 0x02, to = 0x0F},
             new NoteTypeRange {lane = 2, from = 0x02, to = 0x0F},
             new NoteTypeRange {lane = 3, from = 0x02, to = 0x0F},
@@ -464,7 +471,7 @@ namespace bms2csv
                 }
 
                 // 同じ時間に制限数以上のノーツがある
-                if (chartData.main.obj.Count(obj => obj.bmscnt == chartData.main.obj[i].bmscnt) >= MAX_SIMUL_NOTE)
+                if (chartData.main.obj.Count(obj => (obj.bmscnt == chartData.main.obj[i].bmscnt) && (obj.lane != 0)) >= MAX_SIMUL_NOTE)
                 {
                     errorFlag[i] |= NoteErrorFlag.OverNoteLimit;
                 }
