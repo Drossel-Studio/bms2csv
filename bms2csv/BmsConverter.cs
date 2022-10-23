@@ -923,7 +923,7 @@ namespace bms2csv
                     }
                     foreach (BpmChangeTiming bpm in checkPoint)
                     {
-                        output.WriteLine("{0},{1},{2}", bpm.realTimeCount - startNote.Time, bpm.bpm * Measure.measureLength, (int)NoteType.BPMChange);
+                        output.WriteLine("{0},{1},{2}", bpm.realTimeCount - startNote.Time, (int)(bpm.bpm * Measure.measureLength), (int)NoteType.BPMChange);
                     }
                     long measure = GetRealCount(Measure.measureLength, checkPoint, 0);
                     output.WriteLine("{0},{1},{2}", 0, (measure - (startNote.Time % measure)) % measure, (int)NoteType.StartNoteFromMeasureLine);
