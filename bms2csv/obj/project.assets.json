@@ -2,6 +2,19 @@
   "version": 3,
   "targets": {
     "net6.0": {
+      "CommandLineParser/2.9.1": {
+        "type": "package",
+        "compile": {
+          "lib/netstandard2.0/CommandLine.dll": {
+            "related": ".xml"
+          }
+        },
+        "runtime": {
+          "lib/netstandard2.0/CommandLine.dll": {
+            "related": ".xml"
+          }
+        }
+      },
       "Microsoft.NETCore.Platforms/5.0.0": {
         "type": "package",
         "compile": {
@@ -17,10 +30,14 @@
           "Microsoft.NETCore.Platforms": "5.0.0"
         },
         "compile": {
-          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {}
+          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {
+            "related": ".xml"
+          }
         },
         "runtime": {
-          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {}
+          "lib/netstandard2.0/System.Text.Encoding.CodePages.dll": {
+            "related": ".xml"
+          }
         },
         "runtimeTargets": {
           "runtimes/win/lib/netcoreapp2.0/System.Text.Encoding.CodePages.dll": {
@@ -32,6 +49,28 @@
     }
   },
   "libraries": {
+    "CommandLineParser/2.9.1": {
+      "sha512": "OE0sl1/sQ37bjVsPKKtwQlWDgqaxWgtme3xZz7JssWUzg5JpMIyHgCTY9MVMxOg48fJ1AgGT3tgdH5m/kQ5xhA==",
+      "type": "package",
+      "path": "commandlineparser/2.9.1",
+      "files": [
+        ".nupkg.metadata",
+        ".signature.p7s",
+        "CommandLine20.png",
+        "License.md",
+        "README.md",
+        "commandlineparser.2.9.1.nupkg.sha512",
+        "commandlineparser.nuspec",
+        "lib/net40/CommandLine.dll",
+        "lib/net40/CommandLine.xml",
+        "lib/net45/CommandLine.dll",
+        "lib/net45/CommandLine.xml",
+        "lib/net461/CommandLine.dll",
+        "lib/net461/CommandLine.xml",
+        "lib/netstandard2.0/CommandLine.dll",
+        "lib/netstandard2.0/CommandLine.xml"
+      ]
+    },
     "Microsoft.NETCore.Platforms/5.0.0": {
       "sha512": "VyPlqzH2wavqquTcYpkIIAQ6WdenuKoFN0BdYBbCWsclXacSOHNQn66Gt4z5NBqEYW0FAPm5rlvki9ZiCij5xQ==",
       "type": "package",
@@ -94,6 +133,7 @@
   },
   "projectFileDependencyGroups": {
     "net6.0": [
+      "CommandLineParser >= 2.9.1",
       "System.Text.Encoding.CodePages >= 5.0.0"
     ]
   },
@@ -134,6 +174,10 @@
       "net6.0": {
         "targetAlias": "net6.0",
         "dependencies": {
+          "CommandLineParser": {
+            "target": "Package",
+            "version": "[2.9.1, )"
+          },
           "System.Text.Encoding.CodePages": {
             "target": "Package",
             "version": "[5.0.0, )"
@@ -150,12 +194,26 @@
         ],
         "assetTargetFallback": true,
         "warn": true,
+        "downloadDependencies": [
+          {
+            "name": "Microsoft.AspNetCore.App.Ref",
+            "version": "[6.0.12, 6.0.12]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Host.osx-arm64",
+            "version": "[6.0.12, 6.0.12]"
+          },
+          {
+            "name": "Microsoft.NETCore.App.Ref",
+            "version": "[6.0.12, 6.0.12]"
+          }
+        ],
         "frameworkReferences": {
           "Microsoft.NETCore.App": {
             "privateAssets": "all"
           }
         },
-        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/6.0.400/RuntimeIdentifierGraph.json"
+        "runtimeIdentifierGraphPath": "/usr/local/share/dotnet/sdk/7.0.101/RuntimeIdentifierGraph.json"
       }
     }
   }
