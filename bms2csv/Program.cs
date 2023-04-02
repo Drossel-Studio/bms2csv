@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.IO;
 using System.Runtime.InteropServices;
 using System.Text;
+using bms2csv.Model;
+using CommandLine;
 
 namespace bms2csv
 {
@@ -19,13 +21,15 @@ namespace bms2csv
         /// </summary>
         private const uint BufferSize = 256;
 
+        private static CommandLineOption _commandLineOption;
+        private static ConverterModeValueOption _converterModeValueOption;
+        private static ViewerModeValueOption _viewerModeValueOption;
+
         static void Main(string[] args)
         {
             // 入力データ
             string PATH = ".";
             string OUTPUT = "";
-            string EXENAME = "Miyabi.exe";
-            int MEASURE = 0;
             int LOOP_MEASURE = 0;
             int SPEED = 1;
             int LOOP_DISPLAY_NUM = 1;
@@ -36,8 +40,6 @@ namespace bms2csv
             int SE_VOLUME = 100;
 
             // 内部処理用
-            bool viewerMode = false;
-            bool loopMode = false;
             string exportCSVPath;
             string exportHeaderPath;
             string wavePath;
@@ -52,96 +54,36 @@ namespace bms2csv
             int failureCount = 0;
 
             // コマンドライン引数の処理
-            if (args.Length > 0)
+            ParseCommandLineArgs(args);
+
+            if (_commandLineOption.IsViewerMode)
             {
-                if (!args[0].Equals("-V"))
-                {
-                    // 一括変換モード: BMSファイルのパス
-                    viewerMode = false;
-                    loopMode = false;
-                    PATH = args[0];
-                }
-                else
-                {
-                    // ビューアモード: ビューアモード
-                    viewerMode = true;
-                    PATH = "";
-                }
+                PATH = _viewerModeValueOption.FileName;
+                OUTPUT = Path.GetDirectoryName(PATH);
             }
-            if (args.Length > 1)
+            else
             {
-                if (!viewerMode)
-                {
-                    // 一括変換モード: 出力パス
-                    OUTPUT = args[1];
-                }
-                else
-                {
-                    // ビューアモード: 再生モード
-                    if (args[1].Equals("-P"))
-                    {
-                        loopMode = false;
-                    }
-                    else if(args[1].Equals("-R"))
-                    {
-                        loopMode = true;
-                    }
-                    else
-                    { 
-                        return;
-                    }
-                }
-            }
-            if (args.Length > 2)
-            {
-                // ビューアモード: 再生開始小節
-                if (viewerMode)
-                {
-                    if (args[2].StartsWith("-N"))
-                    {
-                        MEASURE = int.Parse(args[2].Substring(2));
-                    }
-                    else
-                    {
-                        MEASURE = 0;
-                    }
-                }
-            }
-            if (args.Length > 3)
-            {
-                // ビューアモード: BMSファイルのパス
-                if (viewerMode)
-                {
-                    PATH = args[3];
-                    OUTPUT = Path.GetDirectoryName(PATH);
-                }
-            }
-            if (args.Length > 4)
-            {
-                // ビューアモード: 使用するEXEファイル名
-                if (viewerMode)
-                {
-                    EXENAME = args[4];
-                }
+                PATH = _converterModeValueOption.InputPath;
+                OUTPUT = _converterModeValueOption.OutputPath;
             }
 
             // ループ設定の読み込み
-            if (loopMode)
+            if (_commandLineOption.Loop)
             {
-                Console.WriteLine("ループする小節数を入力してください (開始小節: {0}小節)", MEASURE);
+                Console.WriteLine("ループする小節数を入力してください (開始小節: {0}小節)", _commandLineOption.Measure);
                 if (!int.TryParse(Console.ReadLine(), out LOOP_MEASURE))
                 {
-                    loopMode = false;
+                    _commandLineOption.Loop = false;
                 }
 
                 if (LOOP_MEASURE < 1)
                 {
-                    loopMode = false;
+                    _commandLineOption.Loop = false;
                 }
             }
 
             // INIファイルの読み込み
-            if (viewerMode)
+            if (_commandLineOption.IsViewerMode)
             {
                 StringBuilder returnedString = new StringBuilder((int)BufferSize);
                 string iniPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Config.ini");
@@ -197,7 +139,7 @@ namespace bms2csv
             }
 
             // 入力パスの存在確認
-            if (!viewerMode)
+            if (!_commandLineOption.IsViewerMode)
             {
                 if (!Directory.Exists(PATH))
                 {
@@ -220,7 +162,7 @@ namespace bms2csv
 
             // 入力ファイルのリストアップ
             string[] files;
-            if (!viewerMode)
+            if (!_commandLineOption.IsViewerMode)
             {
                 files = Directory.GetFiles(PATH, "*", SearchOption.TopDirectoryOnly);
             }
@@ -246,7 +188,7 @@ namespace bms2csv
                 Console.WriteLine(string.Format("Convert: {0}", f));
 
                 // 変換
-                if (success = BmsConverter.Convert_Bms(f, OUTPUT, MEASURE, (MEASURE + LOOP_MEASURE), loopMode, LOOP_DISPLAY_NUM, out exportCSVPath, out exportHeaderPath, out wavePath, out viewerStartTime, out viewerEndTime, out warning))
+                if (success = BmsConverter.Convert_Bms(f, OUTPUT, _commandLineOption.Measure, (_commandLineOption.Measure + LOOP_MEASURE), _commandLineOption.Loop, LOOP_DISPLAY_NUM, out exportCSVPath, out exportHeaderPath, out wavePath, out viewerStartTime, out viewerEndTime, out warning))
                 {
                     successCount++;
                 }
@@ -263,7 +205,7 @@ namespace bms2csv
 
                 Console.WriteLine();
 
-                if (viewerMode)
+                if (_commandLineOption.IsViewerMode)
                 {
                     // WAVEファイルの存在確認
                     if (!File.Exists(wavePath))
@@ -295,7 +237,7 @@ namespace bms2csv
                         Console.ForegroundColor = ConsoleColor.Gray;
                         Console.WriteLine("続行するには何かキーを押してください . . .");
                         Console.ReadKey();
-                        DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, loopMode);
+                        DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, _commandLineOption.Loop);
                         return;
                     }
 
@@ -309,19 +251,19 @@ namespace bms2csv
                         string line = Console.ReadLine();
                         if (!line.Equals("Y", StringComparison.OrdinalIgnoreCase))
                         {
-                            DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, loopMode);
+                            DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, _commandLineOption.Loop);
                             return;
                         }
                     }
 
                     // ビューアの起動
-                    string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, EXENAME);
-                    string loopFlag = loopMode ? "1" : "0";
+                    string exePath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, _viewerModeValueOption.ExeName);
+                    string loopFlag = _commandLineOption.Loop ? "1" : "0";
                     using (Process process = Process.Start(exePath, "\"" + wavePath + "\" \"" + exportCSVPath + "\" " + viewerStartTime.ToString() + " " + SPEED.ToString() + " " + loopFlag + " " + PAUSE_BEFORE_LOOP + " " + MUSIC_SPEED.ToString() + " " + CORRECT_PITCH + " " + BGM_VOLUME + " " + SE_VOLUME))
                     {
-                        while (!process.WaitForExit(1000)) ;
+                        while (!process.WaitForExit(1000));
                     }
-                    DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, loopMode);
+                    DeleteTemporaryFile(exportCSVPath, exportHeaderPath, wavePath, _commandLineOption.Loop);
                 }
             }
 
@@ -339,6 +281,25 @@ namespace bms2csv
             Console.ForegroundColor = ConsoleColor.Red;
             Console.WriteLine(string.Format(failureCount.ToString()));
             Console.ForegroundColor = ConsoleColor.Gray;
+        }
+
+        private static void ParseCommandLineArgs(string[] args)
+        {
+            var result = Parser.Default.ParseArguments<CommandLineOption>(args);
+            if (result.Tag == ParserResultType.NotParsed)
+            {
+                throw new FormatException("コマンドライン引数のパースに失敗");
+            }
+
+            _commandLineOption = result.Value;
+            if (_commandLineOption.IsViewerMode)
+            {
+                _viewerModeValueOption = new ViewerModeValueOption(_commandLineOption.ValueOptions);
+            }
+            else
+            {
+                _converterModeValueOption = new ConverterModeValueOption(_commandLineOption.ValueOptions);
+            }
         }
 
         /// <summary>
