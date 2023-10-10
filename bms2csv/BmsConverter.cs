@@ -583,122 +583,72 @@ namespace bms2csv
         /// <param name="bpmChange">BPM変更のリスト</param>
         private static void CreateRhythmChange(List<RhythmChange> rhythmChange, double initialBpm, ref List<BpmChange> bpmChange)
         {
+            // 拍子変更が入る前のBPM変更リスト
+            List<BpmChange> actualBpmChange = new List<BpmChange>();
+            foreach (BpmChange change in bpmChange)
+            {
+                actualBpmChange.Add(new BpmChange { measure = change.measure, unit_denom = change.unit_denom, unit_numer = change.unit_numer, bmscnt = change.bmscnt, bpm = change.bpm });
+            }
+
             // リストのソート
             rhythmChange.Sort((a, b) => a.measure - b.measure);
             bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
+            actualBpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
 
             // 処理用変数の初期化
             double currentBpm = initialBpm;
-            bool rhythmChanged = false;
-
-            // 0小節目の拍子変更の検索
+            int nearestBpmIndex = 0;
             int measure = 0;
-            int rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
-            if (rhythmIndex != -1)
-            {
-                rhythmChanged = true;
+            int bpmIndex = -1;
+            int rhythmIndex = -1;
 
-                int bpmIndex = bpmChange.FindIndex(c => ((c.measure == measure) && (c.unit_numer == 0)));
-                if (bpmIndex != -1)
-                {
-                    // 小節の最初でBPM変更がある場合はBPM変更の書き換え
-                    currentBpm = bpmChange[bpmIndex].bpm;
-                    bpmChange[bpmIndex].bpm /= rhythmChange[rhythmIndex].mag;
-                }
-                else
-                {
-                    // BPM変更がない場合はBPM変更の新規作成
-                    bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
-                }
-            }
-
-            foreach (BpmChange change in bpmChange)
-            {
-                if (change.measure != measure)
-                {
-                    // 当該小節のBMP変更でない場合
-                    if (rhythmChanged)
-                    {
-                        // 当該小節で拍子変更している場合
-                        if ((change.measure != (measure + 1)) || (change.unit_numer != 0))
-                        {
-                            // 次小節の最初でBPM変更がない場合は打ち消し用BPM変更の新規作成
-                            bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
-                        }
-                    }
-
-                    // BPM変更がない小節での拍子変更
-                    for (measure++; measure < change.measure; measure++)
-                    {
-                        rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
-                        if (rhythmIndex != -1)
-                        {
-                            rhythmChanged = true;
-
-                            // 拍子変更に対応するBPM変更の作成
-                            bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
-
-                            if ((change.measure != (measure + 1)) || (change.unit_numer != 0))
-                            {
-                                // 次小節の最初でBPM変更がない場合は打ち消し用BPM変更の新規作成
-                                bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
-                            }
-                        }
-                    }
-
-                    // BPM変更がある小節での拍子変更
-                    measure = change.measure;
-                    rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
-                    if (rhythmIndex != -1)
-                    {
-                        rhythmChanged = true;
-
-                        if (change.unit_numer != 0)
-                        {
-                            // 小節の最初以外の場合はBPM変更の作成
-                            bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
-                        }
-                    }
-                    else
-                    {
-                        // 当該小節での拍子変更なし
-                        rhythmChanged = false;
-                    }
-                }
-
-                // 現在のBPMを変更
-                currentBpm = change.bpm;
-                if (rhythmChanged)
-                {
-                    // 拍子変更中ならBPM変更の書き換え
-                    change.bpm /= rhythmChange[rhythmIndex].mag;
-                }
-            }
-
-            int maxmeasure = 0;
+            // 拍子変更の探索
             foreach (RhythmChange rchange in rhythmChange)
             {
-                if (rchange.measure > maxmeasure)
+                // 直近までのBPM変更の適用
+                measure = rchange.measure;
+                while ((actualBpmChange.Count > nearestBpmIndex) && (actualBpmChange[nearestBpmIndex].measure < measure))
                 {
-                    maxmeasure = rchange.measure;
+                    currentBpm = actualBpmChange[nearestBpmIndex].bpm;
+                    nearestBpmIndex++;
+                }
+
+                // 該当小節のBPM変更に拍子変更を適用
+                for (int i = 0; i < bpmChange.Count; i++)
+                {
+                    if (bpmChange[i].measure == measure)
+                    {
+                        bpmChange[i].bpm /= rchange.mag;
+                    }
+                }
+
+                // 小節開始時にBPM変更があるかを確認
+                bpmIndex = bpmChange.FindIndex(c => ((c.measure == rchange.measure) && (c.unit_numer == 0)));
+                if (bpmIndex == -1)
+                {
+                    // ない場合は拍子変更に該当するBPM変更を追加
+                    bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rchange.mag });
+                }
+
+                // 次の小節開始時にBPM変更があるか、あるいは次の小節で拍子変更があるかを確認
+                bpmIndex = bpmChange.FindIndex(c => ((c.measure == (measure + 1)) && (c.unit_numer == 0)));
+                rhythmIndex = rhythmChange.FindIndex(c => c.measure == (measure + 1));
+                if ((bpmIndex == -1) && (rhythmIndex == -1))
+                {
+                    // 次の小節までのBPM変更の適用
+                    while ((actualBpmChange.Count > nearestBpmIndex) && (actualBpmChange[nearestBpmIndex].measure < (measure + 1)))
+                    {
+                        currentBpm = actualBpmChange[nearestBpmIndex].bpm;
+                        nearestBpmIndex++;
+                    }
+
+                    // 両方ともない場合は次小節の最初に拍子変更を解除するBPM変更を追加
+                    bpmChange.Add(new BpmChange { measure = (measure + 1), unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm});
                 }
             }
 
-            // BPM変更がない小節での拍子変更
-            for (measure++; measure <= maxmeasure; measure++)
-            {
-                rhythmIndex = rhythmChange.FindIndex(c => c.measure == measure);
-                if (rhythmIndex != -1)
-                {
-                    rhythmChanged = true;
-
-                    // 拍子変更に対応するBPM変更の作成
-                    bpmChange.Add(new BpmChange { measure = measure, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * measure, bpm = currentBpm / rhythmChange[rhythmIndex].mag });
-
-                    // 次小節の最初でBPM変更がない場合は打ち消し用BPM変更の新規作成
-                    bpmChange.Add(new BpmChange { measure = measure + 1, unit_denom = 1, unit_numer = 0, bmscnt = Measure.measureLength * (measure + 1), bpm = currentBpm });
-                }
-            }
+            // リストの再ソート
+            bpmChange.Sort((a, b) => (int)(a.bmscnt - b.bmscnt));
         }
 
         /// <summary>
